@@ -1255,7 +1255,15 @@ for iSet = 1:nSet
    % Matrices de grados de libertad de cada elemento
    %Se realiza un precalculo para acelerar el calculo, aunque puede conllevar mayor transferencia al
    %paralelizar.
-   e_DatSet(set).m_DofElem = reshape(f_DofElem(reshape(e_DatSet(set).conec',1,[]),ndn),e_DatElem.dofpe,[]);
+   %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   %Para protype creo e_DatSet(set).m_DofElem fuera de este bucle de sets.
+   %Con ayuda de m_gdl que se crea mas abajo!!!!!!!!!!!!!!!!!!!!!!!!!!
+   %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   if protype~=3
+       e_DatSet(set).m_DofElem = reshape(f_DofElem(reshape(e_DatSet(set).conec',1,[]),ndn),e_DatElem.dofpe,[]);
+   end 
+   %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    % posicion de los elementos en la matriz de conectividades global
    %(la que se ingresa en el archivo de datos) y es la numeracion interna dentro del programa.
    %Esta solo sirve en el caso que se utilice matrices donde una Dimension es la cantidad de
@@ -1384,7 +1392,10 @@ Dtime=0; %funbc(:,2);
 %*******************************************************************************  
 elseif protype==3 %AA: lectura modificada
      %* TIPO DE ELEMENTO FINITO 
-     [ndoft,ndoft_pm,ndoft_sm,conec_pm,conec_sm] = f_ndof_int(e_DatSet,nSet,ndn_pm,ndn_sm); %AA: util para 2 materiales unicamente
+     [ndoft,m_gdl,ndoft_pm,ndoft_sm,conec_pm,conec_sm] = f_ndof_int(e_DatSet,nSet,ndn_pm,ndn_sm); %AA: util para 2 materiales unicamente
+     for iSet=1:nSet
+         e_DatSet(iSet).m_DofElem = f_ndof_elem(e_DatSet(iSet).conec,m_gdl,e_DatSet(iSet).e_DatMat.conshyp,e_DatSet(iSet).nElem);
+     end
 %*******************************************************************************
 %* FUNCION TEMPORAL PARA CONDICIONES DE BORDE                                  *
 %*******************************************************************************
@@ -1445,17 +1456,39 @@ switch tipoCarga
          m_ValFza = f_ValVar(c_NomVarFza,m_ValExigCarga,c_ValVarCarga,...
             'Cargas aplicadas: Cargas puntuales');
          %Con find(in==m_ValFza(1)) se convierte la numeracion de nodos a la interna.
-         m_gdlNod = f_DofElem(find(in==m_ValFza(1)),ndn);
+         %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+         %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+         switch protype %AA 
+           case {0,1} %AA 
+               m_gdlNod = f_DofElem(find(in==m_ValFza(1)),ndn);
+             
     %          if protype==1 %AA
     %          %AA: agrego para extraer los gdl con carga
     %          log_gdl_carga = m_gdlNod & m_ValFza(2:ndn+1);
     %          gdl_carga_nodo = m_gdlNod(log_gdl_carga); %Grado de libertad con carga (Nodo)
     %          gdl_carga = [gdl_carga ; gdl_carga_nodo];
     %          end %AA
-         %Se realiza una suma de fuerzas, considerando que puede poner varias l�neas con fuerzas en el
+         %Se realiza una suma de fuerzas, considerando que puede poner varias lineas con fuerzas en el
          %mismo nodo, o cuando se defina distintos tipos de carga.
-         f(m_gdlNod) = f(m_gdlNod)+m_ValFza(2:ndn+1);
-         c_ValVarCarga = f_ExtrVar(fid);
+               f(m_gdlNod) = f(m_gdlNod)+m_ValFza(2:ndn+1);
+               c_ValVarCarga = f_ExtrVar(fid);
+           case 3
+               %Fuerzas se ingresan para FX.FY y Q sin importar el tipo de
+               %elemento. Si la carga es para un elemento de medio solido
+               %se elimina el ultimo elemento de carga para Q que no
+               %corresponde
+                m_gdlNod = m_gdl((m_gdl(:,1)==m_ValFza(1)),2:end);
+                if m_gdlNod(3)==0
+                    m_gdlNod(3) = [];
+                    f(m_gdlNod) = f(m_gdlNod)+m_ValFza(2:ndn_pm);
+                else
+                    f(m_gdlNod) = f(m_gdlNod)+m_ValFza(2:ndn_pm+1);
+                end
+                
+                c_ValVarCarga = f_ExtrVar(fid);
+         end %protype
+         %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+         %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       end
 otherwise
   error('Lectura de datos: Cargas aplicadas: Tipo de carga no definida')
@@ -1497,15 +1530,18 @@ matCBFull = false;
 %distintas para cada grado de libertad debería funcionar poner filas separadas para cada uno de ellos.
 %formatBou = ['%f %f',repmat(' %f',1,ndn),repmat(' %s',1,ndn),'\n'];
 %Cambiar que lea todo string entre paréntesis, así se puede agregar espacios dentro de los paréntesis.
-% if protype==0 %AA22
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+if protype==0 || protype==1
     formatBou = ['%f %f',repmat(' %f',1,ndn),' %s']; 
     % formatBou = ['%f %f',repmat(' %f',1,ndn),' %s\n'];% en Linux no anda
-    m_CondBord = textscan(fid,formatBou,'CollectOutput',true,'CommentStyle','$');
-% elseif protype==1 %AA22
-%     formatBou = ['%f %f',repmat(' %f',1,ndn-1),' %s']; 
+%     m_CondBord = textscan(fid,formatBou,'CollectOutput',true,'CommentStyle','$');
+elseif protype==3 %AA22 ndn_pm
+    formatBou = ['%f %f',repmat(' %f',1,ndn_pm),' %s'];     
     % formatBou = ['%f %f',repmat(' %f',1,ndn),' %s\n'];% en Linux no anda
 %     m_CondBord = textscan(fid,formatBou,'CollectOutput',true,'CommentStyle','$');
-% end
+end
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+m_CondBord = textscan(fid,formatBou,'CollectOutput',true,'CommentStyle','$');
 %Se ordena los datos ingresados según la lista de nodos, para asegurar que los índices de los
 %grados de libertad libre y fijos estï¿½n bien calculados, y ordenados segï¿½n la matriz de rigidez
 %global.
@@ -1763,7 +1799,7 @@ e_VG = struct('struhyp',struhyp,'protype',protype,'conshyp',conshyp,...
    'exist_CrackPath',exist_CrackPath,'K_GlobElast',K_GlobElast);
 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-if protype == 1 || protype == 3 %AA
+if protype == 1 
 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     if conshyp == 14 || conshyp == 15 || conshyp == 50
@@ -1778,6 +1814,49 @@ if protype == 1 || protype == 3 %AA
         e_VG.pos_dG=pos_dG; %GDL en desplazamientos
         e_VG.pos_pG=pos_pG; %GDL en poropresiones
     elseif conshyp == 16
+        fields = {'Dtime','max_time'};
+        e_VG = rmfield(e_VG,fields); %AA: remueve los campos de e_VG
+        e_VG.theta = theta;
+%         e_VG.gdl_carga = gdl_carga; %AA
+        e_VG.ndn_d = 2; %AA: ver como mejorar estoooo!!!!!!!
+        e_VG.ndn_p = 1;
+        e_VG.ndn_lambda = 1;
+        e_VG.in_esq=in_esq; %Nodos de esquina
+        e_VG.in_int=in_int; %Nodos internos
+        e_VG.pos_dG=pos_dG; %GDL en desplazamientos
+        e_VG.pos_pG=pos_pG; %GDL en poropresiones
+        e_VG.pos_lambda=pos_lambda; %GDL en MULTIPLICADORES DE LAGRANGE
+    end
+elseif protype == 3 %AA
+    if conshyp == 1 || conshyp == 2 || conshyp == 3
+        fields = {'Dtime','max_time'};
+        e_VG = rmfield(e_VG,fields); %AA: remueve los campos de e_VG
+        e_VG.theta = theta;
+%         e_VG.gdl_carga = gdl_carga; %AA
+        e_VG.ndn_d = ndn-1; %AA: ver como mejorar estoooo!!!!!!!
+        e_VG.ndn_p = 1;
+        e_VG.in_esq=in_esq; %Nodos de esquina
+        e_VG.in_int=in_int; %Nodos internos
+        e_VG.pos_dG=pos_dG; %GDL en desplazamientos
+        e_VG.pos_pG=pos_pG; %GDL en poropresiones
+        e_VG.ndn = ndn_sm;
+        e_VG.ndn_pm = ndn_pm;
+        e_VG.m_gdl = m_gdl;
+    elseif conshyp == 14 || conshyp == 15 || conshyp == 50
+        fields = {'Dtime','max_time'};
+        e_VG = rmfield(e_VG,fields); %AA: remueve los campos de e_VG
+        e_VG.theta = theta;
+%         e_VG.gdl_carga = gdl_carga; %AA
+        e_VG.ndn_d = ndn-1; %AA: ver como mejorar estoooo!!!!!!!
+        e_VG.ndn_p = 1;
+        e_VG.in_esq=in_esq; %Nodos de esquina
+        e_VG.in_int=in_int; %Nodos internos
+        e_VG.pos_dG=pos_dG; %GDL en desplazamientos
+        e_VG.pos_pG=pos_pG; %GDL en poropresiones
+        e_VG.ndn = ndn_sm;
+        e_VG.ndn_pm = ndn_pm;
+        e_VG.m_gdl = m_gdl;
+    elseif conshyp == 16 %NO SE SI FUNCIONA AUN!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         fields = {'Dtime','max_time'};
         e_VG = rmfield(e_VG,fields); %AA: remueve los campos de e_VG
         e_VG.theta = theta;

@@ -6,13 +6,18 @@ function [m_LinCond,m_CteCond,m_InvCRR,doff,dofl,doffCondCte] = f_CondBord(e_VG,
    %Ver si no poner m_ConecFront y m_CteMinRestr dentro de las opciones de las condiciones de borde.
    c_OpCondBord = e_VG.c_OpCondBord;
    ndoft = e_VG.ndoft;
-   ndn = e_VG.ndn;
+%    ndn = e_VG.ndn;
    ndime = e_VG.ndime;
    nSet = e_VG.nSet;
    struhyp = e_VG.struhyp;
+   if e_VG.protype==3
+       ndn = e_VG.ndn_pm;
+   else
+       ndn = e_VG.ndn;
+   end
    
-   %Corregir que con la condici�n de MR si o s� debe ponerse los elementos de frontera, ya que sino el
-   %programa funciona sin error y la matriz de CB da NaN sin aviso de donde est� el error.
+   %Corregir que con la condicion de MR si o si debe ponerse los elementos de frontera, ya que sino el
+   %programa funciona sin error y la matriz de CB da NaN sin aviso de donde esta el error.
    %
    sinCond = 0;
    condCte = 1;
@@ -44,7 +49,7 @@ function [m_LinCond,m_CteCond,m_InvCRR,doff,dofl,doffCondCte] = f_CondBord(e_VG,
    m_CondBordLeid = m_CondBord;
    
    %% Tratamiento de los grados de libertad de las restricciones impuestas
-   %Se ordena en la filas ndn y en las columnas la cantidad de nodos con restricci�n porque facilita
+   %Se ordena en la filas ndn y en las columnas la cantidad de nodos con restriccion porque facilita
    %en algunas partes el indexado.
    %Se transforma la indicaci�n �nica de grados de libertad restringidos en columnas separadas.
    m_DirRestr = zeros(ndn,size(m_CondBordLeid,1));
@@ -55,8 +60,17 @@ function [m_LinCond,m_CteCond,m_InvCRR,doff,dofl,doffCondCte] = f_CondBord(e_VG,
       m_DirRestr(iGdl,:) = m_DirRestrGdl;
       m_DirRestr(ndn,:) = m_DirRestr(ndn,:)-m_DirRestrGdl*decGdl;
    end   
-   %Grados de libertad de los nodos en que se le impuso la restricci�n
-   m_GdlNodRestr = reshape(f_DofElem(m_CondBordLeid(:,1)',ndn),ndn,[]);
+   %Grados de libertad de los nodos en que se le impuso la restriccion
+   %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   if e_VG.protype~=3
+       m_GdlNodRestr = reshape(f_DofElem(m_CondBordLeid(:,1)',ndn),ndn,[]);
+   else
+       m_GdlNodRestr = e_VG.m_gdl(:,2:end);
+       m_GdlNodRestr = (m_GdlNodRestr(m_CondBordLeid(:,1),:))';
+   end
+   %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
    %Valores que se le pone a los nodos restringidos
    m_ValNodRestr = m_CondBordLeid(:,3:end)';
@@ -67,14 +81,14 @@ function [m_LinCond,m_CteCond,m_InvCRR,doff,dofl,doffCondCte] = f_CondBord(e_VG,
    %% Grados de libertad globales restringidos (f: fijos) y libres (l)
    if 0
       doff = m_GdlNodRestr(m_DirRestr~=sinCond);
-      %Se hace la verificaci�n de condiciones de borde a nivel de grados de libertad en lugar de
-      %nodos para que se pueda ingresar dos l�neas de condiciones de borde aplicadas a los mismos
+      %Se hace la verificacion de condiciones de borde a nivel de grados de libertad en lugar de
+      %nodos para que se pueda ingresar dos lineas de condiciones de borde aplicadas a los mismos
       %nodos, pero grados de libertad distintos. Esto permite que valores aplicados a los grados de
       %libertad sean distintos en caso de periodicidad y a la vez que permite condiciones de
       %periodicidad con los de rigidez.
       if length(doff)~=length(unique(doff))
-         error(['Lectura de datos: Condiciones de Borde: Determinaci�n de matrices: Los grados',...
-            ' de libertad con restricci�n no deben estar repetidos.'])
+         error(['Lectura de datos: Condiciones de Borde: Determinacion de matrices: Los grados',...
+            ' de libertad con restriccion no deben estar repetidos.'])
       end
       m_esGdlLibre = true(ndoft,1);
       m_esGdlLibre(doff) = false;
@@ -83,34 +97,47 @@ function [m_LinCond,m_CteCond,m_InvCRR,doff,dofl,doffCondCte] = f_CondBord(e_VG,
       nGdlf = length(doff);
    else
       doff = false(ndoft,1);
-      %Si tiene alg�n grado de libertad repetido, no influye en la cantidad de true ingresado en la
+      %Si tiene algun grado de libertad repetido, no influye en la cantidad de true ingresado en la
       %matriz doff.
-      doff(m_GdlNodRestr(m_DirRestr~=sinCond)) = true;
+      %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      if e_VG.protype~=3
+          doff(m_GdlNodRestr(m_DirRestr~=sinCond)) = true;
+      else
+          A = reshape(m_GdlNodRestr,[],1);
+          B = reshape(m_DirRestr,[],1);
+          A_zero=find(A==0);
+          A(A_zero) = [];
+          B(A_zero) = [];
+          doff(A(B~=sinCond)) = true;
+      end
+      %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       dofl = ~doff;
       nGdlf = sum(doff);
-      %Se hace la verificaci�n de condiciones de borde a nivel de grados de libertad en lugar de
-      %nodos para que se pueda ingresar dos l�neas de condiciones de borde aplicadas a los mismos
+      %Se hace la verificacion de condiciones de borde a nivel de grados de libertad en lugar de
+      %nodos para que se pueda ingresar dos lineas de condiciones de borde aplicadas a los mismos
       %nodos, pero grados de libertad distintos. Esto permite que valores aplicados a los grados de
       %libertad sean distintos en caso de periodicidad y a la vez que permite condiciones de
       %periodicidad con los de rigidez.
       if sum(sum(m_DirRestr~=sinCond))~=nGdlf
-         error(['Lectura de datos: Condiciones de Borde: Determinaci�n de matrices: Los grados',...
-            ' de libertad con restricci�n no deben estar repetidos.'])
+         error(['Lectura de datos: Condiciones de Borde: Determinacion de matrices: Los grados',...
+            ' de libertad con restriccion no deben estar repetidos.'])
       end
    end
    
    %% Desplazamientos prescriptos impuestos
-   %Cuidado hay que forzar que any analice en direcci�n de las filas, porque si no va funcionar bien en el
+   %Cuidado hay que forzar que any analice en direccion de las filas, porque si no va funcionar bien en el
    %caso de un problema de un solo grado libertad, ya que en ese caso de un vector columna analiza en
-   %direcci�n de las columnas.
+   %direccion de las columnas.
    m_IndGdlRestrCondCte = m_DirRestr==condCte;
    [m_RestrLinCondCte,m_RestrCteCondCte,m_GdlRestrCondCte,m_GdlVincCondCte] = f_RestrCondCte(...
       m_GdlNodRestr(:,any(m_IndGdlRestrCondCte,1)),m_ValNodRestr(:,any(m_IndGdlRestrCondCte,1)),...
        m_IndGdlRestrCondCte(:,any(m_IndGdlRestrCondCte,1)));
        
-   %Determinaci�n de que grados de libertad son pertenecientes a la condici�n de movimientos r�gidos.
+   %Determinacion de que grados de libertad son pertenecientes a la condicion de movimientos rigidos.
    if nargout>4
-      %Solo sirve si se utiliza matrices l�gicas para llevar los grados de libertad libre y fijos.
+      %Solo sirve si se utiliza matrices logicas para llevar los grados de libertad libre y fijos.
       %Falta completar para el otro caso.
       doffCondCte = false(ndoft,1);
       doffCondCte(m_GdlNodRestr(m_IndGdlRestrCondCte)) = true;
@@ -124,7 +151,7 @@ function [m_LinCond,m_CteCond,m_InvCRR,doff,dofl,doffCondCte] = f_CondBord(e_VG,
       m_ValNodRestr(:,any(m_IndGdlRestrIgDesp,1)),m_IndGdlRestrIgDesp(:,any(m_IndGdlRestrIgDesp,1)),...
       xx(:,1:ndime),ndn,nSet,e_DatSet,c_OpCondBord(:,any(m_IndGdlRestrIgDesp,1)),e_VG.protype);
    
-   %% Restricciones por homogenizaci�n de las deformaciones
+   %% Restricciones por homogenizacion de las deformaciones
    m_IndGdlRestrHom = m_DirRestr==condHomogDef;
    if any(any(m_IndGdlRestrHom))
       [m_RestrLinHom,m_RestrCteHom,m_GdlRestrHom,m_GdlVincHom,m_GdlRestrCteHom] = ...
@@ -140,10 +167,10 @@ function [m_LinCond,m_CteCond,m_InvCRR,doff,dofl,doffCondCte] = f_CondBord(e_VG,
       m_GdlRestrCteHom = [];
    end
    
-   %% Restricciones por homogenizaci�n de las deformaciones
+   %% Restricciones por homogenizacion de las deformaciones
    %m_IndGdlRestrHom = m_DirRestr==condHomogDef2;
-   %Corregir lo siguiente para indicar que se impone la segunda condici�n de borde de
-   %homogenizaci�n. Tambi�n corregir el parche siguiente. Hacer que las funciones se le pase un
+   %Corregir lo siguiente para indicar que se impone la segunda condicion de borde de
+   %homogenizacion. Tambien corregir el parche siguiente. Hacer que las funciones se le pase un
    %vector con los gdl y los valores impuestos.
    if exist('m_ConecFront2','var')
       %Se impone cualquier valor
@@ -160,24 +187,24 @@ function [m_LinCond,m_CteCond,m_InvCRR,doff,dofl,doffCondCte] = f_CondBord(e_VG,
          m_GdlNodRestrHom2,m_ValNodRestr,...
          m_IndGdlRestrHom,xx(:,1:ndime),ndime,nSet,ndn,struhyp,e_DatSet,m_ConecFront2,...
          m_CteMinRestr);
-      %Se hace una iteraci�n por lo menos para asegurar que la parte correspondiente a la segunda
-      %condici�n de borde de homogenizaci�n est� bien condicionada (determinante distinto de cero
+      %Se hace una iteracion por lo menos para asegurar que la parte correspondiente a la segunda
+      %condicion de borde de homogenizacion esta bien condicionada (determinante distinto de cero
       %alejado de cero). Igual puede fallar al combinarse con otras condiciones de borde.
-      %Para no tener que hacer este ensamblaje, habr�a que elegir gdl arbitrarios para cada fila de
-      %la matriz (la posici�n de las filas no cambian el resultado), y as� poder ensamblar sin
-      %conocer los gdl fijos de esta condici�n, y luego tomar esas filas para determinar la 
+      %Para no tener que hacer este ensamblaje, habria que elegir gdl arbitrarios para cada fila de
+      %la matriz (la posicion de las filas no cambian el resultado), y asi poder ensamblar sin
+      %conocer los gdl fijos de esta condicion, y luego tomar esas filas para determinar la 
       %matriz m_LinCondRestHom2.
       m_LinCondRestHom2 = sparse(m_GdlRestrHom2,m_GdlVincHom2,m_RestrLinHom2,3,ndoft);
       %Se asume que la conectividad de la frontera indicada en la primera es la frontera de la
       %malla.
-      m_GdlRestMR = f_DetGdlFijoCBMR(m_LinCondRestHom2,m_ConecFront2,doff,ndoft,ndn);    %Ac� estaba m_ConecFront en lugar de m_ConecFront2, pero no se usa para nada as� que no influye
+      m_GdlRestMR = f_DetGdlFijoCBMR(m_LinCondRestHom2,m_ConecFront2,doff,ndoft,ndn);    %Aca estaba m_ConecFront en lugar de m_ConecFront2, pero no se usa para nada asi que no influye
       doff(m_GdlRestMR) = true;
       dofl(m_GdlRestMR) = false;
       nGdlf = nGdlf+3;
       m_GdlRestrHom2 = repmat(m_GdlRestMR,length(m_GdlVincHom2)/3,1);
       %condMat = cond(full(m_LinCondRestHom2(:,m_GdlNodRestr(m_IndGdlRestrHom))));
       condMat = condest(m_LinCondRestHom2(:,m_GdlRestMR));
-      fprintf('N�mero de condici�n %f\n',condMat);
+      fprintf('Numero de condicion %f\n',condMat);
       %while 1/condMat<1e8*eps(1)    %condMat>1e-8/eps(1)
       %end
    else
@@ -193,7 +220,7 @@ function [m_LinCond,m_CteCond,m_InvCRR,doff,dofl,doffCondCte] = f_CondBord(e_VG,
 %        m_IndGdlRestrCondCte(:,any(m_IndGdlRestrCondCte)));
    
   
-   %% restricci�n de condici�n de borde de la media del campo de desplazmiento
+   %% Restriccion de condicion de borde de la media del campo de desplazmiento
    m_IndGdlRestrMedia = m_DirRestr==condMedia;
    [m_RestrLinCondMedia,m_RestrCteCondMedia,m_GdlRestrCondMedia,m_GdlVincCondMedia,m_GdlRestrCteCondMedia] = ...
       f_RestrMedia(m_GdlNodRestr(:,any(m_IndGdlRestrMedia,1)),...
@@ -202,7 +229,7 @@ function [m_LinCond,m_CteCond,m_InvCRR,doff,dofl,doffCondCte] = f_CondBord(e_VG,
 
       
    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%   
-   %% Matrices de restricci�n
+   %% Matrices de restriccion
    m_LinCond = sparse([m_GdlRestrCondCte;m_GdlRestrIgDesp;m_GdlRestrHom;m_GdlRestrHom2;m_GdlRestrCondMedia],...
       [m_GdlVincCondCte;m_GdlVincIgDesp;m_GdlVincHom;m_GdlVincHom2;m_GdlVincCondMedia],...
       [m_RestrLinCondCte;m_RestrLinIgDesp;m_RestrLinHom;m_RestrLinHom2;m_RestrLinCondMedia],...
@@ -246,7 +273,7 @@ function [m_LinCond,m_CteCond,m_InvCRR,doff,dofl,doffCondCte] = f_CondBord(e_VG,
           doff2= [((node2-1)*ndn+1) ; node2*ndn];
           nCond_Band= size(CondBand(i_band).matriz,1);
           
-          for i_eq= 2:nCond_Band;
+          for i_eq= 2:nCond_Band
               
               node3= CondBand(i_band).matriz(i_eq,3);
               node4= CondBand(i_band).matriz(i_eq,4);
@@ -267,10 +294,10 @@ function [m_LinCond,m_CteCond,m_InvCRR,doff,dofl,doffCondCte] = f_CondBord(e_VG,
 
    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
    
-   % Condensaci�n para que en funci�n de los grados de libertad sin restricci�n
+   % condensacion para que en funcion de los grados de libertad sin restriccion
    %m_InvCRR = inv(m_LinCond(doff,doff));
    m_InvCRR = m_LinCond(doff,doff)\speye(nGdlf,nGdlf);
-   %Ver si es m�s lento as� para matrices sparse que hacer dos veces la inversa.
+   %Ver si es mas lento asi para matrices sparse que hacer dos veces la inversa.
    %m_LinCond = m_LinCond(doff,doff)\[-m_LinCond(doff,dofl),m_CteCond(doff)];
    %m_LinCond = m_LinCond(doff,doff)\-m_LinCond(doff,dofl);
    m_LinCond = m_InvCRR*-m_LinCond(doff,dofl);
@@ -278,19 +305,19 @@ function [m_LinCond,m_CteCond,m_InvCRR,doff,dofl,doffCondCte] = f_CondBord(e_VG,
    %m_CteCond = m_LinCond(:,end);
    %m_LinCond = m_LinCond(:,1:end-1);
    
-   %Se incorpora esta opci�n porque se observ� en el caso que las matrices de condiciones de borde que son
+   %Se incorpora esta opcion porque se observo en el caso que las matrices de condiciones de borde que son
    %llenas, como ejemplo en el caso de la media de temperatura (la temperatura de todos los nodos dependen
-   %entre s�), hace que la matriz de rigidez global condensada tenga las caracter�sticas de una matriz llena.
-   %Esto ocurre por el esquema de condensaci�n directa utilizada para la resoluci�n del sistema:
+   %entre si), hace que la matriz de rigidez global condensada tenga las caracteristicas de una matriz llena.
+   %Esto ocurre por el esquema de condensacion directa utilizada para la resolucion del sistema:
    %KT = KT(dofl,dofl)+m_LinCond'*KT(doff,dofl)+KT(dofl,doff)*m_LinCond+m_LinCond'*KT(doff,doff)*m_LinCond;
-   %donde principalmente aporta a la p�rdida de la sparsidad el t�rmino m_LinCond'*KT(doff,doff)*m_LinCond.
-   %Que la matriz de rigidez global condensada tenga caracter�stica de llena y se almacene en una esquema de
-   %matrices sparse hace que funcione m�s lento (aproximadamente la mitad) y ocupe m�s espacio
+   %donde principalmente aporta a la perdida de la sparsidad el termino m_LinCond'*KT(doff,doff)*m_LinCond.
+   %Que la matriz de rigidez global condensada tenga caracteristica de llena y se almacene en una esquema de
+   %matrices sparse hace que funcione mas lento (aproximadamente la mitad) y ocupe mas espacio
    %(aproximadamente el doble, siendo esto lo peor porque puede hacer que swapee, es decir que use la memoria
    %virtual y en consecuencia el disco), que en el caso de utilizar directamente matrices llenas.
    %Al hacer las matrices de condiciones de borde full, hace que la matriz rigidez global condensada sea full,
    %aunque la matriz de rigidez completa (no condensada) sea sparse.
-   %Por ahora se convierte la matrices a full, habr�a que ver si no organizarlo de otra forma para ensamblarlo
+   %Por ahora se convierte la matrices a full, habria que ver si no organizarlo de otra forma para ensamblarlo
    %directamente como matrices full.
    if e_VG.matCBFull
       m_LinCond = full(m_LinCond);
@@ -302,9 +329,9 @@ end
 %%
 function esInt = f_esPtoIntElem2D(m_CoordNod,PtoInt,eltype)
    
-   %Se asume que los nodos de las conectividades est�n ordenadas en sentido antihorario, es decir la
-   %lista de coordenadas en m_CoordNod est�n ordenadas de esa forma. Esto es importante para la
-   %verificaci�n que el punto sea interior.
+   %Se asume que los nodos de las conectividades estan ordenadas en sentido antihorario, es decir la
+   %lista de coordenadas en m_CoordNod estan ordenadas de esa forma. Esto es importante para la
+   %verificacion que el punto sea interior.
    %Solo sirve cuando el elemento tiene forma convexa en la malla (en coordenadas globales).
    if eltype==16
        m_CoordNodA = zeros(size(m_CoordNod));
@@ -325,7 +352,7 @@ function [m_RestrLin,m_RestrCte,m_GdlRestr,m_GdlVinc,m_GdlRestrCte] = f_RestrIgD
    % Restricciones de igualdad de desplazamientos
    %En forma general no se conoce la cantidad de grados de libertad que van estar vincunlados con
    %la igualdad de desplazamiento, ya que no se conoce el tipo de elemento donde coincide la
-   %posici�n que se impone la misma.
+   %posicion que se impone la misma.
    m_GdlVinc = [];
    m_GdlRestr = [];
    m_RestrLin = [];
@@ -334,7 +361,7 @@ function [m_RestrLin,m_RestrCte,m_GdlRestr,m_GdlVinc,m_GdlRestrCte] = f_RestrIgD
       nNodRestr = size(m_GdlNodRestr,2);   
       for iNodRestr = 1:nNodRestr
          ptoEncon = false;
-         %Se asume que si se agrega datos en las opciones es porque las coordenadas a la que est� vinculado el
+         %Se asume que si se agrega datos en las opciones es porque las coordenadas a la que esta vinculado el
          %nodo se ingresa por ah�.
          %Se asume que c_OpCondBord tiene un valor por nodo asignado.
          s_OpCondBord = c_OpCondBord{:,iNodRestr};
@@ -345,7 +372,9 @@ function [m_RestrLin,m_RestrCte,m_GdlRestr,m_GdlVinc,m_GdlRestrCte] = f_RestrIgD
             m_Pos = textscan(c_OpCondBord{:,iNodRestr},'(%f,%f)','CollectOutPut',true);
             m_Pos = m_Pos{1}';
          end
-         if protype==1 %AA22: Agregue 2022 
+         %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+         %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+         if protype==1||protype==3 %AA22: Agregue 2022 
              m_Pos = m_Pos(1:2);
          end %AA22: Agregue 2022 
          for iSet =  1:nSet
@@ -377,12 +406,12 @@ function [m_RestrLin,m_RestrCte,m_GdlRestr,m_GdlVinc,m_GdlRestrCte] = f_RestrIgD
 %                            ones(8,1)]'\[m_Pos;m_Pos(1)*m_Pos(2);1];
                                       %AA22: Agregue 2022
                      otherwise
-                        error(['Lectura de datos: Condiciones de borde: Determinaci�n de matrices: ',...
+                        error(['Lectura de datos: Condiciones de borde: Determinacion de matrices: ',...
                            'Restricciones de igualdad de desplazamiento: Tipo de elemento no ',...
                            'implementado.']);
                   end
-                  %Se guarda como vector para usar el ensamblaje de la funci�n sparse.
-                  %Se considera que los grados de libertad del elemento est�n aproximados con las mismas
+                  %Se guarda como vector para usar el ensamblaje de la funcion sparse.
+                  %Se considera que los grados de libertad del elemento estan aproximados con las mismas
                   %funciones de forma.
                   m_GdliNodRestr = m_GdlNodRestr(m_IndGdlRestr(:,iNodRestr),iNodRestr);
                   nGdlNodRestr = length(m_GdliNodRestr);
@@ -394,8 +423,8 @@ function [m_RestrLin,m_RestrCte,m_GdlRestr,m_GdlVinc,m_GdlRestrCte] = f_RestrIgD
                      :),[],1)];
                   m_RestrLin = [m_RestrLin;ones(nGdlNodRestr,1);reshape(repmat(-m_FunFormX,1,...
                      nGdlNodRestr)',[],1)];
-                  %Se considera que el desplazamiento se eval�a s�lo con la funci�n de forma de un
-                  %elemento. Cuando coincide la posici�n con un lado contiguo de dos elementos se eval�a
+                  %Se considera que el desplazamiento se eval�a silo con la funcion de forma de un
+                  %elemento. Cuando coincide la posicion con un lado contiguo de dos elementos se eval�a
                   %solo sobre uno de ellos. (Esto no es correcto con mallas compuestas?).
                   %Varias restricciones pueden estar sobre los mismos elementos.
                   ptoEncon = true;
@@ -435,9 +464,9 @@ function [m_RestrLin,m_RestrCte,m_GdlRestr,m_GdlVinc] = f_RestrCondCte(m_GdlNodR
    m_ValNodRestr,m_IndGdlRestr)
    
    % Restricciones debidas a desplazamientos prescriptos
-   %Para que funcione correctamente la concatenaci�n cuando las matrices son vac�os pero con dimensi�n, se
-   %fuerza que sean vac�as y sin dimensi�n. Ver si se puede hacer autom�ticamente, es decir que salga de la
-   %indexaci�n (cuidado que no es tan simple y recordar que deber�a funcionar para distintos n�meros de
+   %Para que funcione correctamente la concatenaci�n cuando las matrices son vAcaos pero con dimensi�n, se
+   %fuerza que sean vAcaas y sin dimensi�n. Ver si se puede hacer autom�ticamente, es decir que salga de la
+   %indexaci�n (cuidado que no es tan simple y recordar que deber�a funcionar para distintos Numeros de
    %grados de libertad).
    if ~isempty(m_IndGdlRestr)
       m_GdlRestr = m_GdlNodRestr(m_IndGdlRestr);
@@ -445,7 +474,7 @@ function [m_RestrLin,m_RestrCte,m_GdlRestr,m_GdlVinc] = f_RestrCondCte(m_GdlNodR
       m_RestrCte = m_ValNodRestr(m_IndGdlRestr);
       %Para asegurar que sean columnas estas matrices para cualquier cantidad de grados de libertad por nodo
       %(cuando ndn=1, las matrices que devuelve esta indexaci�n es filas).
-      %Esto podr�a evitar el problema de matrices vac�as sin las dimensiones correctas, ver que el problema es
+      %Esto podr�a evitar el problema de matrices vAcaas sin las dimensiones correctas, ver que el problema es
       %el mismo.
       m_GdlRestr = m_GdlRestr(:);
       m_GdlVinc = m_GdlVinc(:);
@@ -482,20 +511,20 @@ function [m_C,m_RestrCte,m_GdlRestr,m_GdlVinc,m_GdlRestrCte] = f_RestrCondHomog(
     % xx    : lista de coordenadas de todos los nodos de la malla
     % xx    = [ x1 y1 z1 ; x2 y2 z2 ; x3 y3 z3 ; x4 y4 z4 ; ... ]
 
-   %m_ValNodRestr: no se utiliza en esta restricci�n lineal.
-   %Se tiene 3 ecuaciones de independientes de la restricci�n por homogenizaci�n de la deformaci�n
+   %m_ValNodRestr: no se utiliza en esta restriccion lineal.
+   %Se tiene 3 ecuaciones de independientes de la restriccion por homogenizacion de la deformaci�n
    %en un problema de dos dimensiones
    %ngdLDep = 3;
-   %Se agrega la condici�n de borde antisim�trica 1/2*(ux*ny-uy*nx)=0 a las condiciones sobre toda la
+   %Se agrega la condicion de borde antisim�trica 1/2*(ux*ny-uy*nx)=0 a las condiciones sobre toda la
    %frontera.
-   %En el caso de ser homog�neas imponer (si no es, tambi�n ser�a necesario imponer 1/2*(uy*nx-ux*ny) =
-   %-1/2*(ux*ny-uy*nx)), la condici�n 1/2*(ux*ny-uy*nx)=0 junta a las otras es equivalente a imponer u * v no
+   %En el caso de ser homog�neas imponer (si no es, Tambien ser�a necesario imponer 1/2*(uy*nx-ux*ny) =
+   %-1/2*(ux*ny-uy*nx)), la condicion 1/2*(ux*ny-uy*nx)=0 junta a las otras es equivalente a imponer u * v no
    %sim�trico.
    ngdLDepMax = 4;
    
-   %% Determinaci�n de los grados de libertad dependientes (impuestos como restricci�n)
+   %% Determinacion de los grados de libertad dependientes (impuestos como restriccion)
    m_GdlDep = m_GdlNodRestr(m_IndGdlRestr);
-   %Para asegurar que m_GdlDep sea siempre un vector columna, cualquiera sea la cantidad de n�mero de grados
+   %Para asegurar que m_GdlDep sea siempre un vector columna, cualquiera sea la cantidad de Numero de grados
    %de libertad por nodo (cuando tiene un solo grado de libertad, m_IndGdlRestr es un vector fila, y por lo
    %tanto al indexar en m_GdlNodRestr, que es un vector fila devuelve, devuelve un vector fila).
    m_GdlDep = m_GdlDep(:);
@@ -506,16 +535,16 @@ function [m_C,m_RestrCte,m_GdlRestr,m_GdlVinc,m_GdlRestrCte] = f_RestrCondHomog(
    %m_ElType = [e_DatSet.eltype]';
    m_ElType = arrayfun(@(x)x.e_DatElem.eltype,e_DatSet);
    if any(~(m_ElType==2|m_ElType==4|m_ElType==8|m_ElType==20|m_ElType==31|m_ElType==32|m_ElType==108))
-      error(['Lectura de datos: Condiciones de borde: Determinaci�n de matrices: Restricciones ',...
-         'por homogenizaci�n de la deformaci�n: Tipo de elemento no implementado.'])
+      error(['Lectura de datos: Condiciones de borde: Determinacion de matrices: Restricciones ',...
+         'por homogenizacion de la deformaci�n: Tipo de elemento no implementado.'])
    end
    if ndime~=2
-      error(['Lectura de datos: Condiciones de borde: Determinaci�n de matrices: Restricciones ',...
-         'por homogenizaci�n de la deformaci�n: Implementado s�lo para problemas 2D.'])
+      error(['Lectura de datos: Condiciones de borde: Determinacion de matrices: Restricciones ',...
+         'por homogenizacion de la deformaci�n: Implementado silo para problemas 2D.'])
    end
    if ngdLDep>ngdLDepMax
-      error(['Lectura de datos: Condiciones de borde: Determinaci�n de matrices: Restricciones ',...
-         'por homogenizaci�n de la deformaci�n: est� implementado para que tenga a lo sumo cuatro ',...
+      error(['Lectura de datos: Condiciones de borde: Determinacion de matrices: Restricciones ',...
+         'por homogenizacion de la deformaci�n: esta implementado para que tenga a lo sumo cuatro ',...
          'restricciones de este tipo.'])
    end
    
@@ -529,29 +558,29 @@ function [m_C,m_RestrCte,m_GdlRestr,m_GdlVinc,m_GdlRestrCte] = f_RestrCondHomog(
    %Vector Tangente normalizado
    tvector = bsxfun(@rdivide,tvector,le);
    %Vector Normal normalizado
-   %Ac� se define que los elementos de frontera se ingresa en sentido horario para que la normal
-   %quede hacia afuera pero como las restricciones de homogenizaci�n son ecuaciones homog�neas no
+   %Aca se define que los elementos de frontera se ingresa en sentido horario para que la normal
+   %quede hacia afuera pero como las restricciones de homogenizacion son ecuaciones homog�neas no
    %importa el signo que tenga las componentes de la normal ya que da el mismo resultado (es decir
-   %no interesa en que direcci�n se ingrese los elementos mientras que sea la misma en todos ellos).
+   %no interesa en que direccion se ingrese los elementos mientras que sea la misma en todos ellos).
    nvector = [tvector(:,2),-tvector(:,1)];
 
-   %% Determinaci�n de la matriz C global de homogenizaci�n
+   %% Determinacion de la matriz C global de homogenizacion
    [nelFront,nNodElFront] = size(m_ConecFront);   
 
-   %La cantidad de columnas est� dictado por la cantidad grados de libertad del elemento, por la cantidad de
+   %La cantidad de columnas esta dictado por la cantidad grados de libertad del elemento, por la cantidad de
    %grados de libertad de cada nodo, correspondiente a las funciones de forma de interpolaci�n de la variable
    %del problema.
    m_C = zeros(ngdLDep,nNodElFront*ndn,nelFront);
    m_GdlVinc = zeros(ngdLDep,nNodElFront*ndn,nelFront);
    
-   %Se adopta en forma arbitraria que el primer grado de libertad donde se le impone restricci�n de
-   %este en el programa tiene la ecuaci�n de homogenizaci�n de las componentes xx del tensor, la
+   %Se adopta en forma arbitraria que el primer grado de libertad donde se le impone restriccion de
+   %este en el programa tiene la ecuaci�n de homogenizacion de las componentes xx del tensor, la
    %segunda las componentes yy, y el tercero tiene las componentes xy.
-   %Igual el orden no influye en que el sistema est� mal condicionada (cercano a matriz singular).
+   %Igual el orden no influye en que el sistema esta mal condicionada (cercano a matriz singular).
    m_GdlRestr = repmat(m_GdlDep,[1,nNodElFront*ndn,nelFront]);
          
    %La ubicaci�n de los valores en la matriz m_C de los grados de libertad depende de como se defina las
-   %matrices de funciones de forma del campo que se est� interpolando. Para tener en cuento esto se lo mide
+   %matrices de funciones de forma del campo que se esta interpolando. Para tener en cuento esto se lo mide
    %con la hip�tesis estructural.
    switch struhyp 
       case {1,2,20} %Small deformation Plane strain and Plane stress, large deformations with plane deformation.
@@ -561,7 +590,7 @@ function [m_C,m_RestrCte,m_GdlRestr,m_GdlVinc,m_GdlRestrCte] = f_RestrCondHomog(
          m_IndNPosFFRes1 = 1:ndn:nNodElFront*ndn;
          m_IndNPosFFRes2 = 1:ndn:nNodElFront*ndn;
       otherwise
-         error('Lectura de datos: Condiciones de Borde: M�nima restricci�n: Estado no disponible.'); 
+         error('Lectura de datos: Condiciones de Borde: M�nima restriccion: Estado no disponible.'); 
    end
    %
    for iElemFront = 1:nelFront
@@ -570,17 +599,17 @@ function [m_C,m_RestrCte,m_GdlRestr,m_GdlVinc,m_GdlRestrCte] = f_RestrCondHomog(
     
       m_GdlVinc(:,:,iElemFront) = repmat(m_DofElemFront',ngdLDep,1);
     
-      %Integral de la funci�n de forma sobre el borde del elemento (sobre el elemento de barra).
+      %Integral de la funcion de forma sobre el borde del elemento (sobre el elemento de barra).
       %En el caso de elementos lineales la integral es la mitad de la longitud del elemento
       %(tri�ngulo de base le y altura 1).
       intN = le(iElemFront)/2;
       
-      %Para que funcione si se elije imponer menos ecuaciones de esta condici�n.
-      %Ver que el orden cu�l restricci�n corresponde a n�mero de grado de libertad elegido en el archivo de
+      %Para que funcione si se elije imponer menos ecuaciones de esta condicion.
+      %Ver que el orden cu�l restriccion corresponde a Numero de grado de libertad elegido en el archivo de
       %datos es medio arbitrario ya que depende del orden en el que viene en la matriz de m_GdlDep.
-      %Lo que s� es determinado es que se impone una condici�n de este tipo, se impone ux*nx=0, si se
-      %impone dos condiciones, se impone ux*nx=0 y uy*ny=0. Si se impone tres condiciones, adem�s de las dos
-      %anteriores se impone ux*ny+uy*nx. Si hay cuatro condiciones impone las otras tres m�s ux*ny-uy*nx.
+      %Lo que si es determinado es que se impone una condicion de este tipo, se impone ux*nx=0, si se
+      %impone dos condiciones, se impone ux*nx=0 y uy*ny=0. Si se impone tres condiciones, ademas de las dos
+      %anteriores se impone ux*ny+uy*nx. Si hay cuatro condiciones impone las otras tres mas ux*ny-uy*nx.
       if ngdLDep>0
          %ux*nx=0
          m_C(1,m_IndNPosFFRes1,iElemFront) = nvector(iElemFront,1)*intN;
@@ -589,15 +618,15 @@ function [m_C,m_RestrCte,m_GdlRestr,m_GdlVinc,m_GdlRestrCte] = f_RestrCondHomog(
          %uy*ny=0
          m_C(2,m_IndNPosFFRes2,iElemFront) = nvector(iElemFront,2)*intN;
       end
-      %%condici�n sim�trica.
-      %Ac� se elimin� el 1/2 asumiendo que es homog�nea la condici�n de borde.
+      %%condicion sim�trica.
+      %Aca se elimin� el 1/2 asumiendo que es homog�nea la condicion de borde.
       if ngdLDep>2
          %ux*ny+uy*nx
          m_C(3,m_IndNPosFFRes1,iElemFront) = nvector(iElemFront,2)*intN;
          m_C(3,m_IndNPosFFRes2,iElemFront) = nvector(iElemFront,1)*intN;
       end
-      %%condici�n antisim�trica.
-      %Ac� se elimin� el 1/2 asumiendo que es homog�nea la condici�n de borde.
+      %%condicion antisim�trica.
+      %Aca se elimin� el 1/2 asumiendo que es homog�nea la condicion de borde.
       if ngdLDep>3
          %ux*ny-uy*nx
          m_C(4,m_IndNPosFFRes1,iElemFront) = nvector(iElemFront,2)*intN;
@@ -606,7 +635,7 @@ function [m_C,m_RestrCte,m_GdlRestr,m_GdlVinc,m_GdlRestrCte] = f_RestrCondHomog(
          
    end
    
-   %Se vectoriza las matrices para usarla con la funci�n sparse.
+   %Se vectoriza las matrices para usarla con la funcion sparse.
    m_GdlRestr = m_GdlRestr(:);
    m_GdlVinc = m_GdlVinc(:);
    m_C = m_C(:);
@@ -614,7 +643,7 @@ function [m_C,m_RestrCte,m_GdlRestr,m_GdlVinc,m_GdlRestrCte] = f_RestrCondHomog(
    %Este no se utiliza pero deber�a devolver los valores que se ensamblan en la matriz de constante.
    m_GdlRestrCte = m_GdlDep;
    if exist('m_CteMinRestr','var')
-      %m_CteMinRestr: Vector conteniendo las ctes. de m�nima restricci�n ordenada seg�n las componentes xx, yy, y
+      %m_CteMinRestr: Vector conteniendo las ctes. de m�nima restriccion ordenada seg�n las componentes xx, yy, y
       %xy.
       m_RestrCte = m_CteMinRestr(:);
    else
@@ -630,14 +659,14 @@ function [m_RestrLin,m_RestrCte,m_GdlRestr,m_GdlVinc,m_GdlRestrCte] = f_RestrMed
    %nGdLDep = 2;
    %La fila que se elija para insertar en la matriz m_LinCond la ecuaciones de las restricciones, no tienen
    %importancia, mientras que no se repita la fila en dos ecuaciones distintas. Por ello se puede elegir
-   %cualquier grado de libertad restringido, ya sea en x o y, para la ecuaci�n de restricci�n de la media 
+   %cualquier grado de libertad restringido, ya sea en x o y, para la ecuaci�n de restriccion de la media 
    %sobre la componente x o y del desplazamiento.
    %Considerando esto se podr�a hacer m_GdlDep = m_GdlNodRestr(m_IndGdlRestr);, pero tiene el inconveniente
    %que dependiendo como fueron elegidos los grados de libertad dependientes (orden), se le puede asignar 
    %distinto seg�n el caso (por ejemplo, la componente x se asigna la ecuaci�n de x o la de y seg�n
    %como es el orden de los grados de libertad).
    %Para evitar, se asume que vienen dos grados de libertad fijados, en cualquier orden, pero se
-   %inserta primero el grado de libertad en x, que va definir la posici�n de la ecuaci�n x, y luego el grado
+   %inserta primero el grado de libertad en x, que va definir la posicion de la ecuaci�n x, y luego el grado
    %de libertad y que define la fila de la ecuaci�n y.
    if ndn==4 %AA: add
    m_GdlDep = [m_GdlNodRestr(1,m_IndGdlRestr(1,:));m_GdlNodRestr(2,m_IndGdlRestr(2,:));...
@@ -650,14 +679,14 @@ function [m_RestrLin,m_RestrCte,m_GdlRestr,m_GdlVinc,m_GdlRestrCte] = f_RestrMed
    elseif ndn==1
       m_GdlDep = m_GdlNodRestr(1,m_IndGdlRestr(1,:));
    else
-      error(['Lectura de datos: Condiciones de borde: Determinaci�n de matrices: Restricciones ',...
-         'de media: No est� implementado para que tenga solo dos restricciones de este tipo.'])
+      error(['Lectura de datos: Condiciones de borde: Determinacion de matrices: Restricciones ',...
+         'de media: No esta implementado para que tenga solo dos restricciones de este tipo.'])
    end
    nGdLDep = length(m_GdlDep);
    if ~isempty(m_GdlDep)
 %       if length(m_GdlDep)~=nGdLDep
-%          error(['Lectura de datos: Condiciones de borde: Determinaci�n de matrices: Restricciones ',...
-%             'de media: est� implementado para que tenga solo dos restricciones de este tipo.'])
+%          error(['Lectura de datos: Condiciones de borde: Determinacion de matrices: Restricciones ',...
+%             'de media: esta implementado para que tenga solo dos restricciones de este tipo.'])
 %       end
       %
       c_RestrLin = cell(nSet,1);
@@ -691,7 +720,7 @@ function [m_RestrLin,m_RestrCte,m_GdlRestr,m_GdlVinc,m_GdlRestrCte] = f_RestrMed
                   m_N(:,:,iElem) = m_Ne;
                end
             otherwise
-               error(['Lectura de datos: Condiciones de borde: Determinaci�n de matrices: Restricciones ',...
+               error(['Lectura de datos: Condiciones de borde: Determinacion de matrices: Restricciones ',...
                   'de media: Elemento Finito no definido.'])
          end
          %
@@ -703,32 +732,32 @@ function [m_RestrLin,m_RestrCte,m_GdlRestr,m_GdlVinc,m_GdlRestrCte] = f_RestrMed
       m_GdlVinc = cat(1,c_Col{:});
       m_GdlRestr = cat(1,c_Fil{:});
 
-      %Se fija que el t�rmino de la restricci�n sea cero, ignorando la que viene del archivo de datos (ver si
+      %Se fija que el termino de la restriccion sea cero, ignorando la que viene del archivo de datos (ver si
       %imponer de la que viene del archivo de datos).
       %m_RestrCte = zeros(m_GdlDep,1);
       %Se asume (ver arriba) que, primero, se impone la primera ecuaci�n x, vinculada con el grado de libertad
       %x como dependiente (de ese grado de libertad toma el valor constante), y, segundo, se vincula la
       %ecuaci�n y con el grado de libertad dependiente con el y.
-      %Para interpretar esta restricci�n de media de temperatura en todo el dominio igual al valor impuesto en
-      %en el archivo de datos, habr�a que multiplicar ese valor impuesto por el volumen del dominio. Esto
+      %Para interpretar esta restriccion de media de temperatura en todo el dominio igual al valor impuesto en
+      %en el archivo de datos, habria que multiplicar ese valor impuesto por el volumen del dominio. Esto
       %puede generar problemas en los problemas multiescala, donde a veces cuando hay poro y no se lo malla,
       %se impone un valor distinto de volumen que no es igual volumen calculado como la suma de los vol�menes
-      %de los elementos finitos. Por ello se interpreta, que esta restricci�n es la interal_dom[Var] = alfa;
-      %donde alfa es el valor impuesto en el archivo de datos. Ahora para que esta restricci�n tenga sentido
+      %de los elementos finitos. Por ello se interpreta, que esta restriccion es la interal_dom[Var] = alfa;
+      %donde alfa es el valor impuesto en el archivo de datos. Ahora para que esta restriccion tenga sentido
       %de media de Var, alfa debe ser igual a Vol[dom]*ValMedio_Var.
       if ndn==2
       m_RestrCte = [m_ValNodRestr(1,m_IndGdlRestr(1,:));m_ValNodRestr(2,m_IndGdlRestr(2,:))];
       elseif ndn==1
          m_RestrCte = m_ValNodRestr(1,m_IndGdlRestr(1,:));
       else
-         error(['Lectura de datos: Condiciones de borde: Determinaci�n de matrices: Restricciones ',...
-            'de media: No est� implementado para que tenga solo dos restricciones de este tipo.'])
+         error(['Lectura de datos: Condiciones de borde: Determinacion de matrices: Restricciones ',...
+            'de media: No esta implementado para que tenga solo dos restricciones de este tipo.'])
       end  
       m_GdlRestrCte = m_GdlDep;
    else
-      %En el caso de no tener restricciones se env�a matrices vac�as, que al concatenar las matrices no
-      %influye. Esto se hizo para la homogeneizaci�n de las deformaciones fuera de la funci�n, pero ver si no
-      %queda m�s ordenado hacerlo dentro de las mismas.
+      %En el caso de no tener restricciones se env�a matrices vAcaas, que al concatenar las matrices no
+      %influye. Esto se hizo para la homogeneizaci�n de las deformaciones fuera de la funcion, pero ver si no
+      %queda mas ordenado hacerlo dentro de las mismas.
       m_RestrLin = [];
       m_GdlVinc = [];
       m_GdlRestr = [];

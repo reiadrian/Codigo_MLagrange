@@ -4,26 +4,26 @@ function psi_value = get_psi_value(funbc,time,e_VG)
    %Dtime = e_VG.Dtime;
    %max_time = e_VG.max_time;
 
-   %Se está considerando que el time ingresado siempre es mayor que cero, por lo que no se hace
-   %ninguna verificación si no se cumple con esto. También se asume que está ordenados los tiempos
-   %ingresados, pero si no siempre se usa el primer número mayor (según estén ordenados).
+   %Se esta considerando que el time ingresado siempre es mayor que cero, por lo que no se hace
+   %ninguna verificacion si no se cumple con esto. Tambien se asume que esta ordenados los tiempos
+   %ingresados, pero si no siempre se usa el primer numero mayor (segun estan ordenados).
    npfun = size(funbc,1);
 
-   % Cuando time es menor a la primera abscisa (tiempo) de la función.
+   % Cuando time es menor a la primera abscisa (tiempo) de la funcion.
    if time<funbc(1,1)
       %Puede devolver valores de Psi menores que cero (ver que hacer con esto).
-      warning(['Análisis no lineal: Determinación del factor Psi: El tiempo de cálculo es menor',...
-         ' al primer punto de la función Psi definida: Se utiliza una extrapolación de',...
+      warning(['Analisis no lineal: Determinacion del factor Psi: El tiempo de calculo es menor',...
+         ' al primer punto de la funcion Psi definida: Se utiliza una extrapolacion de',...
          ' la primer recta ingresada.']) %#ok<WNTAG>
    end
-   % Cuando time está dentro de los valores de la función definida.
+   % Cuando time esta dentro de los valores de la funcion definida.
    for i = 2:npfun
       %Esta forma realizar permite que se pueda ingresar funciones con saltos en Psi, solo se debe
       %ingresar para el mismo tiempo dos valores y que los mismos ordenados de menor a mayor
       %(siempre se busca el primer tiempo mayor a time, y se interpola entre este y el anterior, y
-      %luego se sale de la función).
+      %luego se sale de la funcion).
       if time<=funbc(i,1)
-         %Interpolación lineal entre el valor anterior (i-1) y el siguiente.
+         %Interpolacion lineal entre el valor anterior (i-1) y el siguiente.
          psi_value = funbc(i-1,2)+(time-(funbc(i-1,1)))*(funbc(i,2)-funbc(i-1,2))/...
             (funbc(i,1)-funbc(i-1,1));
          %Cuando se encuentra el primer tiempo valor mayor o igual a time, y se sale (esto permite 
@@ -31,16 +31,17 @@ function psi_value = get_psi_value(funbc,time,e_VG)
          return
       end
    end
-   % Cuando time es mayor a los valores de la función definida.
-   %Por el return anterior acá se pasa sólo si ocurre que el time es mayor.
+   % Cuando time es mayor a los valores de la funcion definida.
+   %Por el return anterior acï¿½ase pasa solo si ocurre que el time es mayor.
    %if time>funbc(npfun,1)
    psi_value = funbc(npfun-1,2)+(time-(funbc(npfun-1,1)))*(funbc(npfun,2)-funbc(npfun-1,2))/...
       (funbc(npfun,1)-funbc(npfun-1,1));
-   warning(['Análisis no lineal: Determinación del factor Psi: Se superó el tiempo hasta ',...
-      'donde se definió la función: Se utiliza una extrapolación de la última recta ingresada.']) %#ok<WNTAG>
+   warning(['Analisis no lineal: Determinacion del factor Psi: Se supero el tiempo hasta ',...
+      'donde se definio la funcion: Se utiliza una extrapolacion de la ultima recta ingresada.']) %#ok<WNTAG>
    %end
-   
-   elseif e_VG.protype==1 %AA
+   %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   elseif e_VG.protype==1 || e_VG.protype==3 %AA
          if e_VG.istep==0
              psi_value = 0.0;
          else

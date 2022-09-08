@@ -4,7 +4,7 @@ function tidespor = f_CurvaDato
 %*******************************************************************************
 %* APERTURA DEL ARCHIVO DE DATOS                                               *
 %*******************************************************************************
-main_example_path =[pwd '/Examples/Articulo2/MS_RVE8/'];
+main_example_path =[pwd '/Examples/MS_Comp/'];
 path_file= main_example_path; file = 'CurvaDato.dat' ; %'\Examples\MS_Comp\'
 file_open = fullfile(path_file,file);
 fid = fopen(file_open,'r');

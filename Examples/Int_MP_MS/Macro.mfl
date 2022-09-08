@@ -144,6 +144,7 @@ END_FUNCTION
 $--------------------------------------------------------------------------LOAD
    LOAD: NEW_LOAD
       POINT_LOAD
+         NODE=4 Fx=0 Fy=-8  Q=0 
          NODE=41 Fx=0 Fy=-0.166666  Q=0 
          NODE=42 Fx=0 Fy=-0.666666  Q=0
          NODE=43 Fx=0 Fy=-0.166666  Q=0

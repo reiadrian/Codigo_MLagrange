@@ -1,6 +1,6 @@
 function u = nonlinear_analysis(in,xx,m_SetElem,f,funbc,e_DatSet,e_VG)
 
-%***************************************,**************************************************
+%******************************************************************************************
 %*  RUTINA PARA RESOLVER EL PROBLEMA NO LINEAL MATERIAL MEDIANTE M.E.F.                   *
 %******************************************************************************************
 
@@ -79,7 +79,11 @@ end
 ELOCCalc = false(1,nElem);
 if e_VG.protype==0
     e_VarEst_old = f_eVarEstInic({'sigma','eps','eps_fluct','hvar'},e_DatSet,e_VG); %AA: add case 14
-elseif e_VG.protype==1 
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+elseif e_VG.protype==1 || e_VG.protype==3
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     e_VarEst_old = f_eVarEstInic({'sigmaE','sigmaT','eps','phi','porpr','velflu','mflu','mYcord','eps_fluct','phi_fluct',...
     'p_fluct','p_M','hvar','bodyForce'},e_DatSet,e_VG);
 end
@@ -123,7 +127,11 @@ if exist([e_VG.fileCompleto,'.m'],'file')
 end
 
 % FUNCION CONDICIONES DE BORDE
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 [m_LinCond,vfix,m_InvCRR,doff,dofl,doffCondCte] = f_CondBord(e_VG,xx,e_DatSet,e_VG.m_ConecFront);
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 % Medicion de tiempos en un cluster mediante parTicToc
 c_ParTT = cell(np,1);
@@ -137,10 +145,15 @@ for istep = istepSave+1:np
    
    if e_VG.protype==0 %AA: Dtime variable en problemas bifase
        time = Dtime*istep;
-   elseif e_VG.protype==1 %AA: Dtime variable en problemas bifase
+   %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   elseif e_VG.protype==1 || e_VG.protype==3 %AA: Dtime variable en problemas bifase
        time=funbc(istep,2);
        e_VG.Dtime = time;
+       e_VG.Dtime2 = e_VG.Dtime2 + funbc(istep,2);
    end %AA
+   %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    
    disp('=================================================================');
    fprintf('STEP: %-3d\n',istep);
@@ -158,19 +171,26 @@ for istep = istepSave+1:np
        DefMacro = arrayfun(@(x)zeros(e_VG.ntens,x.nElem),e_DatSet,'UniformOutput',false); %AA
        %AA: Quite la cantidad de PG suponiendo que la deformacion macro es constante en todo el elento y aplicado a cada PG
        DefMacroT = zeros(ntens,1);
-       if e_VG.protype==1 
+       %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+       %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+       if e_VG.protype==1 ||e_VG.protype==3
            GradPorMacro = arrayfun(@(x)zeros(2,x.nElem),e_DatSet,'UniformOutput',false); %AA22 VER DIMENSIONES DEL VECTOR
            PorMacro = arrayfun(@(x)zeros(1,x.nElem),e_DatSet,'UniformOutput',false); %AA22 VER DIMENSIONES DEL VECTOR
            GradPorMacroT = zeros(2,1); %AA22
            PorMacroT = zeros(1,1); %AA22 
        end
+       %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+       %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    end
        
    % FUERZA DEBIDA AL FLUJO
-   if e_VG.conshyp==14
+   %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   if e_VG.conshyp==14||e_VG.protype==3
        [Fext] = f_Fflux(Fext,u,e_DatSet,e_VG); %AA: add function
    end
-  
+   %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    % DESPLAZAMIENTO IMPUESTO
    vDeltaFixTemp = vfix;
    Du_step_new = zeros(ndoft,1);
