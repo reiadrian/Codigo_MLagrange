@@ -87,6 +87,38 @@ switch struhyp
                    error('Problema bifasico no resuelto en 3D');
 %                    fprintf(fid_res,'ComponentNames "X-DISPL" "Y-DISPL" "Z-DISPL"\n');
                end
+           case 3
+                %Desplazamientos
+                   fprintf(fid_res,['Result "Displacements',tipoDesp,'" "Load Analysis" %d Vector OnNodes\n'],iStep);
+                   ndn_d=e_VG.ndn_d;
+                   m_gdl = e_VG.m_gdl;   
+                   pos_dG = [m_gdl(:,2);m_gdl(:,3)];
+                   pos_dG = sort(pos_dG);
+                   ud=u(pos_dG);
+                   fprintf(fid_res,'ComponentNames "X-DISPL" "Y-DISPL"\n');
+                   fprintf(fid_res,'Values\n');
+                   format = ['%d',repmat(' %.15g',1,ndn_d),'\n'];
+                   fprintf(fid_res,format,[in';reshape(ud,ndn_d,[])]);   %[in,u(1:ndime:end),u(2:ndime:end)]'
+                   fprintf(fid_res,'End Values\n');
+                   
+                   %Poropresiones
+                   fprintf(fid_res,['Result "Pore-pressure',tipoDesp,'" "Load Analysis" %d Scalar OnNodes\n'],iStep); %Scalar
+                   pos_pG = m_gdl(:,4);
+                   up = zeros(size(m_gdl,1),1);
+                   up(pos_pG~=0)=u(pos_pG(pos_pG~=0));
+%                    up=u(pos_pG(pos_pG~=0));
+                   ndn_p=e_VG.ndn_p;
+%                    in_p=in((pos_pG~=0),1:2);
+%                    in_esq=e_VG.in_esq;
+%                    pos_pG=3*in_esq;
+%                   pos_pG=3*in;
+%                    up=u(pos_pG);
+%                    inp=in(in_esq);
+                   fprintf(fid_res,'ComponentNames "Pore-pressure"\n');
+                   fprintf(fid_res,'Values\n');
+                   format = ['%d',repmat(' %.15g',1,ndn_p),'\n'];
+                   fprintf(fid_res,format,[in';reshape(up,ndn_p,[])]);   %[in,u(1:ndime:end),u(2:ndime:end)]' %inp
+                   fprintf(fid_res,'End Values\n');
        end %protype %AA
 
     case 30
@@ -115,7 +147,7 @@ if e_VG.esME
                   elseif ndime==3
                       fprintf(fid_res,'ComponentNames "X-DISPL" "Y-DISPL" "Z-DISPL"\n');
                   end
-              case 1
+              case {1,3}
                 if ndime==2
                    %Desplazamientos
                    fprintf(fid_res,'Result "Displacements//Total" "Load Analysis" %d Vector OnNodes\n',iStep);
@@ -143,7 +175,7 @@ if e_VG.esME
                elseif ndime==3
                    error('Problema bifasico no resuelto en 3D');
 %                    fprintf(fid_res,'ComponentNames "X-DISPL" "Y-DISPL" "Z-DISPL"\n');
-               end
+                end                
        end %protype %AA
                   
       case 30
@@ -359,7 +391,7 @@ for iSet = 1:nSet
    
    if protype==0 %AA
        stress = e_VarEst(iSet).sigma; 
-   elseif protype==1 %AA
+   elseif protype==1||protype==3 %AA
        stressE = e_VarEst(iSet).sigmaE;
        stressT = e_VarEst(iSet).sigmaT;
        %AA22
@@ -371,7 +403,7 @@ for iSet = 1:nSet
    end  %AA
    
    % AA: REVISAAAAAAAAAAAAAAAAAAAAR 
-   DefMacroM = DefMacro{iSet}; %AA: modifiqu� para poder "imprimir" variable
+   DefMacroM = DefMacro{iSet}; %AA: modifique para poder "imprimir" variable
    SDef = size(DefMacroM);  %AA
    if size(SDef,2)==3 %AA
        DefMM = reshape(DefMacroM,[SDef(1)*SDef(2),SDef(3)]);  %AA
@@ -730,11 +762,11 @@ for iSet = 1:nSet
                     error(['GidPost: Deformaciones en los puntos de Gauss: Componentes: ',...
                         'Hip�tesis estructural no implementada'])
             end %struhyp
-       case 1 %protype %AA
+       case {1,3} %protype %AA
            switch struhyp %AA
                %%SMALL DEFORMATIONS (Infinitesimal Strain)
-               case {1,2} %Deformaci�n plana y Tensi�n plana
-                   
+               case {1,2} %Deformacion plana y Tension plana
+%                    if conshyp==14
                    % Tensiones Efectivas
                    tipoDatAlmac = 'PlainDeformationMatrix';
                    nomComponente = '"StressEfect XX" "StressEfect YY" "StressEfect XY" "StressEfect ZZ"';
@@ -749,6 +781,7 @@ for iSet = 1:nSet
                    m_Ind([ntens,ntens-1],:) = m_Ind([ntens-1,ntens],:);
                    fprintf(fid_res,format,[m_NumElem;stressE(m_Ind(:),:)]);
                    fprintf(fid_res,'End Values\n');
+%                    end
                    % Tensiones Totales
                    tipoDatAlmac = 'PlainDeformationMatrix';
                    nomComponente = '"StressTot XX" "StressTot YY" "StressTot XY" "StressTot ZZ"';
@@ -1337,6 +1370,145 @@ for iSet = 1:nSet
 end
 
 fclose(fid_res);
+%%
+if protype==1||protype==3
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+%**************************************************
+%* RUTINA PARA GENERAR LOS ARCHIVOS DE RESULTADOS *
+%* PARA SER POSTPROCESADOS CON GID                *
+%* Archivo: NAME.pp.res                       *
+%**************************************************
+
+% Variables globales
+%
+if e_VG.isPostResMultFile
+   [dir,nomb] = fileparts(fileCompleto);
+   fileCompleto = fullfile(dir,'GiDRes',nomb);
+   %
+   %Se guarda en el archivo List el nombre del archivo de los resultados de este paso tiempo.
+   fileNameLstp = [fileCompleto,'.post.lst'];
+   fIdp = fopen(fileNameLstp,'at');
+   fprintf(fIdp,'%s\n',[nomb,'_P',num2str(iStep),'.pp.res']);
+   fclose(fIdp);
+   %
+   %Se abre archivo de resultados.
+   filename_resp = [fileCompleto,'_P',num2str(iStep),'.pp.res'];
+   fid_resp = fopen(filename_resp,'wt');
+   fprintf(fid_resp,'GiD Post Results File 1.0 \n');
+else
+   %Se abre archivo de resultados.
+   filename_resp = [fileCompleto,'.pp.res'];
+   fid_resp = fopen(filename_resp,'at');
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+if e_VG.esME
+   % Fluctuacion de desplazamientos
+   tipoDesp = '//Fluctuations';
+else
+   tipoDesp = '';
+end
+omconec = [];
+  for iSet2 = 1:nSet
+       m_Conec2 = e_DatSet(iSet2).conec(:,1:4);
+       omconec2 = reshape(m_Conec2,[],1);
+       omconec = [omconec;omconec2];
+  end
+  omconec = sort(unique(omconec));
+switch struhyp
+   case {1,2,20}
+       switch protype %AA
+            case 1 %AA                   
+                   %Poropresiones
+                   fprintf(fid_resp,['Result "Pore-pressure',tipoDesp,'" "Load Analysis" %d Scalar OnNodes\n'],iStep); %Scalar
+                   ndn_p=e_VG.ndn_p;
+%                    in_esq=e_VG.in_esq;
+%                    pos_pG=3*in_esq;
+                  pos_pG=3*omconec;
+                   up=u(pos_pG);
+%                    inp=in(in_esq);
+                   fprintf(fid_resp,'ComponentNames "Pore-pressure"\n');
+                   fprintf(fid_resp,'Values\n');
+                   format = ['%d',repmat(' %.15g',1,ndn_p),'\n'];
+                   fprintf(fid_resp,format,[omconec';reshape(up,ndn_p,[])]);   %[in,u(1:ndime:end),u(2:ndime:end)]' %inp
+                   fprintf(fid_resp,'End Values\n');
+           case 3                  
+                   %Poropresiones
+                   fprintf(fid_resp,['Result "Pore-pressure',tipoDesp,'" "Load Analysis" %d Scalar OnNodes\n'],iStep); %Scalar
+                   pos_pG = m_gdl(omconec,4);
+                   up = zeros(size(pos_pG,1),1);
+                   up(pos_pG~=0)=u(pos_pG(pos_pG~=0));
+%                    up = zeros(size(m_gdl,1),1);
+%                    up(pos_pG~=0)=u(pos_pG(pos_pG~=0));
+%                    up=u(pos_pG(pos_pG~=0));
+                   ndn_p=e_VG.ndn_p;
+%                    in_p=in((pos_pG~=0),1:2);
+%                    in_esq=e_VG.in_esq;
+%                    pos_pG=3*in_esq;
+%                   pos_pG=3*in;
+%                    up=u(pos_pG);
+%                    inp=in(in_esq);
+                   fprintf(fid_resp,'ComponentNames "Pore-pressure"\n');
+                   fprintf(fid_resp,'Values\n');
+                   format = ['%d',repmat(' %.15g',1,ndn_p),'\n'];
+                   fprintf(fid_resp,format,[omconec';reshape(up,ndn_p,[])]);   %[in,u(1:ndime:end),u(2:ndime:end)]' %inp
+                   fprintf(fid_resp,'End Values\n');
+       end %protype %AA
+    case 30
+      fprintf(fid_resp,['Result "Temperature',tipoDesp,'" "Load Analysis" %d Scalar OnNodes\n'],iStep);
+   otherwise
+      error('GidPost: Nodal Values: Structural hypothesis not defined.');
+end
+
+if e_VG.esME
+   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+   % Desplazamientos totales
+   switch struhyp
+      case {1,2,20}
+        switch protype %AA             
+              case {1,3}
+                if ndime==2
+                   %Desplazamientos
+                   fprintf(fid_resp,'Result "Displacements//Total" "Load Analysis" %d Vector OnNodes\n',iStep);
+                   ndn_d=e_VG.ndn_d;
+                   udT=udTotal ;%udTotal(e_VG.pos_d) %Deberia ver si se incluye un vectore udTotal QUE INCLUYA POROPRESIONES MACRO
+                   fprintf(fid_resp,'ComponentNames "X-DISPL" "Y-DISPL"\n');
+                   fprintf(fid_resp,'Values\n');
+                   format = ['%d',repmat(' %.15g',1,ndn_d),'\n'];
+                   fprintf(fid_resp,format,[in';reshape(udT,ndn_d,[])]);   %[in,u(1:ndime:end),u(2:ndime:end)]'
+                   fprintf(fid_resp,'End Values\n');
+                   
+                   %Poropresiones
+                   fprintf(fid_resp,'Result "Pore-pressure//Total" "Load Analysis" %d Scalar OnNodes\n',iStep);
+                   ndn_p=e_VG.ndn_p;
+%                    in_esq=e_VG.in_esq;
+%                    pos_pG=3*in_esq;
+%                    pos_pG=3*in;
+%                    up=u(pos_pG); %Deberia ver si se incluye un vectore udTotal QUE INCLUYA POROPRESIONES MACRO
+%                    inp=in(in_esq);
+                   fprintf(fid_resp,'ComponentNames "Pore-pressure"\n');
+                   fprintf(fid_resp,'Values\n');
+                   format = ['%d',repmat(' %.15g',1,ndn_p),'\n'];
+                   fprintf(fid_resp,format,[in';reshape(upTotal,ndn_p,[])]);   %[in,u(1:ndime:end),u(2:ndime:end)]'
+                   fprintf(fid_resp,'End Values\n');
+               elseif ndime==3
+                   error('Problema bifasico no resuelto en 3D');
+%                    fprintf(fid_res,'ComponentNames "X-DISPL" "Y-DISPL" "Z-DISPL"\n');
+                end                
+       end %protype %AA                  
+      case 30
+         fprintf(fid_resp,'Result "Temperature//Total" "Load Analysis" %d Scalar OnNodes\n',iStep);
+   otherwise
+      error('GidPost: Multi-scale: Total Nodal Values: Structural hypothesis not defined.');
+   end
+   
+end
+fclose(fid_resp);
+end
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 
 end
 

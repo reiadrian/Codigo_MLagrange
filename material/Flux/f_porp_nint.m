@@ -2,55 +2,62 @@ function u = f_porp_nint(u,e_DatSet,e_VG)
 % Permite determinar por interpolacion el valor de las
 
 nSet = e_VG.nSet;
-ndn = e_VG.ndn;
+if e_VG.protype==1
+    ndn = e_VG.ndn;
+elseif e_VG.protype==3
+    ndn = e_VG.ndn_pm;
+end
 
 % Inicializaciones
 % c_U = cell(nSet,1);
 % c_FilU = cell(nSet,1);
 
    for iSet = 1:nSet
-       nElem = e_DatSet(iSet).nElem;
-       m_DofElem = e_DatSet(iSet).m_DofElem;
-       conec = e_DatSet(iSet).conec;
-       
-       dofElemSet = m_DofElem(:);
-%        m_FilU = dofElemSet';
-       dofpe = e_DatSet(iSet).e_DatElem.dofpe;
-       npe = e_DatSet(iSet).e_DatElem.npe;
-       ndn_p = e_DatSet(iSet).e_DatElem.ndn_p;
-       dofElemSet = m_DofElem(:);
-       uElemSet  = reshape(u(dofElemSet),[],nElem);
-       
-       conec_int=conec(:,4*ndn_p+1:npe);
-       m_FF_p = sf_nodmid(ndn_p,npe);
-       
-       pore_press = uElemSet(3:ndn:dofpe,:);
-       
-       for iElem=1:nElem
-           con_rep=[];
-           con=conec_int(iElem,:);
-           if iElem>1
-               a1=repmat(con,4,1)';
-               a2=repmat(con_ant,4,1);
-               con_id=(a1==a2);
-               a3=int8(con_id);
-               a4=sum(a3,2)';
-               for i=1:4
-                   if a4(i)==1
-                       con_rep=[con_rep 4*ndn_p+i];
+       conshyp = e_DatSet(iSet).e_DatMat.conshyp;
+       if conshyp==14
+           nElem = e_DatSet(iSet).nElem;
+           m_DofElem = e_DatSet(iSet).m_DofElem;
+           conec = e_DatSet(iSet).conec;
+
+           dofElemSet = m_DofElem(:);
+    %        m_FilU = dofElemSet';
+           dofpe = e_DatSet(iSet).e_DatElem.dofpe;
+           npe = e_DatSet(iSet).e_DatElem.npe;
+           ndn_p = e_DatSet(iSet).e_DatElem.ndn_p;
+           dofElemSet = m_DofElem(:);
+           uElemSet  = reshape(u(dofElemSet),[],nElem);
+
+           conec_int=conec(:,4*ndn_p+1:npe);
+           m_FF_p = sf_nodmid(ndn_p,npe);
+
+           pore_press = uElemSet(3:ndn:dofpe,:);
+
+           for iElem=1:nElem
+               con_rep=[];
+               con=conec_int(iElem,:);
+               if iElem>1
+                   a1=repmat(con,4,1)';
+                   a2=repmat(con_ant,4,1);
+                   con_id=(a1==a2);
+                   a3=int8(con_id);
+                   a4=sum(a3,2)';
+                   for i=1:4
+                       if a4(i)==1
+                           con_rep=[con_rep 4*ndn_p+i];
+                       end
                    end
                end
-           end
-           pp=pore_press(:,iElem);
-           pore_press(4*ndn_p+1:npe,iElem)=m_FF_p*pp;
-           pore_press(con_rep,iElem)=0.0;
-           u(3*con)= u(3*con) + pore_press(4*ndn_p+1:npe,iElem);
-%            u(3*con_rep)=0.0;
-           con_ant=con;
-%            uElemSet(3:ndn:dofpe,iElem)=pore_press(1:npe,iElem);
-       end %iElem
-%        c_FilU{iSet} = m_FilU;
-%        c_U{iSet} = uElemSet(:);
+               pp=pore_press(:,iElem);
+               pore_press(4*ndn_p+1:npe,iElem)=m_FF_p*pp;
+               pore_press(con_rep,iElem)=0.0;
+               u(3*con)= u(3*con) + pore_press(4*ndn_p+1:npe,iElem);
+    %            u(3*con_rep)=0.0;
+               con_ant=con;
+    %            uElemSet(3:ndn:dofpe,iElem)=pore_press(1:npe,iElem);
+           end %iElem
+    %        c_FilU{iSet} = m_FilU;
+    %        c_U{iSet} = uElemSet(:);
+       end
    end
 %    % Ensamble de matriz de desplazamientos con poropresiones en lados del
 %    % elemento
@@ -58,7 +65,7 @@ ndn = e_VG.ndn;
 %    u=full(u);
      
    function m_FF_p = sf_nodmid(ndn_p,npe)
-%*  numeración de nodos: 4------7------3                                         *
+%*  numeraciï¿½n de nodos: 4------7------3                                         *
 %*                       |             |                                         *
 %*                       8             6                                         *
 %*                       |             |                                         *

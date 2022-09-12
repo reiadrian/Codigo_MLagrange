@@ -95,12 +95,19 @@ c_GdlCond = f_cVarCondInic(e_DatSet,e_VG);
 %Impresion de archivo de postprocesado de la malla e inicializacion del archivo de datos
 matlab2gid_mesh(in,xx,e_DatSet,e_VG)
 e_VG.istep = 0;
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 f_InicArchDat(in,m_SetElem,e_DatSet,e_VG)
-
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 f_SaveDatGraf(u,c_GdlCond,Fint,e_VarEst_old,e_VarAux,e_DatSet,m_SetElem,sigmaHomog,epsilon_Macro,e_VG) ; 
 
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 % VALOR DE LA FUNCION Psi EN EL TIEMPO CERO
 psi_value_old      = get_psi_value(funbc,0,e_VG);
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 %Con istepSave se indica desde que paso se empieza a correr. Si lee el archivo mat, el valor nulo de
 %istepSave es pisado por el paso donde se guarda el workspace.
@@ -211,14 +218,18 @@ for istep = istepSave+1:np
    
    ticIDNewt = tic;
    % ESQUEMA DE NEWTON-RAPHSON
+   %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    if e_VG.protype==0 % Caso solido
        [u,c_GdlCond,Fint,e_VarEst_new,e_VarAux,Du_step_new,c_CT,KT,lambda,o_Par] = newton_raphson(xx,m_LinCond,...
            dofl,doff,u,Du_step_new,c_GdlCond,Du_step_old,Fint,Fext,e_VarEst_old,e_VarAux,e_DatSet,DefMacro,e_VG);
-   elseif e_VG.protype==1 % Caso bifasico
+   elseif e_VG.protype==1 || e_VG.protype==3 % Caso bifasico
        [u,c_GdlCond,Fint,e_VarEst_new,e_VarAux,Du_step_new,c_CT,KT,lambda,o_Par,...
            c_Cw_eps,c_bw_p,c_kw_phi] = newton_raphsonPM(xx,m_LinCond,...
            dofl,doff,u,Du_step_new,c_GdlCond,Du_step_old,Fint,Fext,e_VarEst_old,e_VarAux,e_DatSet,DefMacro,GradPorMacro,PorMacro,e_VG);
    end
+   %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    if e_VG.conshyp==50
        [Fext] = f_Fflux4(Fext,u,e_DatSet,e_VG,c_Cw_eps,c_bw_p,c_kw_phi); %AA: add function
    end
@@ -240,12 +251,32 @@ for istep = istepSave+1:np
               udTotal = [DefMacroT(1),DefMacroT(4)/2;DefMacroT(4)/2,DefMacroT(2)]*xx(:,1:2)'...
                   +reshape(ud,ndn_d,[]); 
               %Deberia ver si se incluye un vector uTotal QUE INCLUYA POROPRESIONES MACRO
+          %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+          %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+          elseif e_VG.protype==3 %AA
+              m_gdl = e_VG.m_gdl;     
+              pos_dG = [m_gdl(:,2);m_gdl(:,3)];
+              ud=u(pos_dG);
+              ndn_d=e_VG.ndn_d;
+              udTotal = [DefMacroT(1),DefMacroT(4)/2;DefMacroT(4)/2,DefMacroT(2)]*xx(:,1:2)'...
+                  +reshape(ud,ndn_d,[]); 
+              %Deberia ver si se incluye un vector uTotal QUE INCLUYA POROPRESIONES MACRO
          end %AA
+         %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+         %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+         
          if e_VG.protype==1 %AA
-             u = f_porp_nint(u,e_DatSet,e_VG); %AA: obtiene los valores de poropresiones en los nodos internos
+%              u = f_porp_nint(u,e_DatSet,e_VG); %AA: obtiene los valores de poropresiones en los nodos internos
              up=u(e_VG.pos_pG);
              ndn_p=e_VG.ndn_p;
              upTotal = PorMacroT+GradPorMacroT'*xx(:,1:2)'+reshape(up,ndn_p,[]);
+         elseif e_VG.protype==3 %AA
+%              u = f_porp_nint(u,e_DatSet,e_VG);
+             pos_pG = m_gdl(:,4);
+             up=u(pos_pG(pos_pG~=0));
+             xx_p=xx((pos_pG~=0),1:2);
+             ndn_p=e_VG.ndn_p;
+             upTotal = PorMacroT+GradPorMacroT'*xx_p'+reshape(up,ndn_p,[]);
          end %protype
          e_VG.epsilon_Macro = epsilon_Macro;  % AA: Agrego en la estrutura de e_VG porque ingresa en matlab2gid
          e_VG.sigmaHomog = sigmaHomog;  % AA: Agrego en la estrutura de e_VG porque ingresa en matlab2gid
@@ -253,7 +284,7 @@ for istep = istepSave+1:np
          if e_VG.protype==0 %AA
              matlab2gid_res(istep,in,u,c_GdlCond,e_DatSet,e_VarEst_new,e_VarAux,DefMacro,uTotal,...
                  ELOCCalc,e_VG)
-         elseif e_VG.protype==1 %AA
+         elseif e_VG.protype==1||e_VG.protype==3 %AA
              matlab2gid_res_Bif(istep,in,u,c_GdlCond,e_DatSet,e_VarEst_new,e_VarAux,...
                  DefMacro,udTotal,upTotal,ELOCCalc,e_VG)
          end

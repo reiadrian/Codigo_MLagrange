@@ -56,13 +56,17 @@ function e_VarEst = f_eVarEstInic(c_Field,e_DatSet,e_VG,varargin)
                      if e_VG.protype == 0
                          v_InicHvarSet(1:sihvare,1:nElem) = struct('u',[],'c_GdlCond',[],'Fint',[],...
                         'e_VarEst',[],'e_VarAux',[],'m_LinCond',[],'doff',[],'dofl',[],'c_DefMacro',[]);
-                     elseif e_VG.protype == 1
+                     %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                     %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                     elseif e_VG.protype == 1||e_VG.protype == 1
                          v_InicHvarSet(1:sihvare,1:nElem) = struct('u',[],'c_GdlCond',[],'Fint',[],...
                         'e_VarEst',[],'e_VarAux',[],'m_LinCond',[],'doff',[],'dofl',[],'c_DefMacro',[],...
                         'c_GradPorMacro',[],'c_PorMacro',[],'m_VarFluc_eps0',zeros(e_DatSet.e_DatMat.e_VG.ndoft,ntens),...
                         'm_VarFluc_p0',zeros(e_DatSet.e_DatMat.e_VG.ndoft,1),...
                         'm_VarFluc_phi0',zeros(e_DatSet.e_DatMat.e_VG.ndoft,2));
                      end
+                     %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                     %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                   else
                      e_DatSetMicro = e_DatMatSet.e_DatSet;
                      e_VGMicro = e_DatMatSet.e_VG;
@@ -103,7 +107,9 @@ function e_VarEst = f_eVarEstInic(c_Field,e_DatSet,e_VG,varargin)
                         'm_LinCond',m_LinCondMicro,'doff',doffMicro,'dofl',doflMicro,...
                         'c_DefMacro',{arrayfun(@(x)zeros(e_VGMicro.ntens,x.nElem),e_DatSetMicro,...
                            'UniformOutput',false)});
-                     elseif e_VG.protype == 1
+                       %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                       %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                     elseif e_VG.protype == 1 || e_VG.protype == 3
                          v_InicHvarSet(1:sihvare,1:nElem) = struct('u',zeros(e_VGMicro.ndoft,1),...
                         'c_GdlCond',{f_cVarCondInic(e_DatSetMicro,e_VGMicro)},...
                         'Fint',zeros(e_VGMicro.ndoft,1),...
@@ -117,7 +123,9 @@ function e_VarEst = f_eVarEstInic(c_Field,e_DatSet,e_VG,varargin)
                            'm_VarFluc_eps0',zeros(e_DatSet.e_DatMat.e_VG.ndoft,ntens),...
                            'm_VarFluc_p0',zeros(e_DatSet.e_DatMat.e_VG.ndoft,1),...
                            'm_VarFluc_phi0',zeros(e_DatSet.e_DatMat.e_VG.ndoft,2));
-                      end
+                     end
+                      %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                      %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                         %Notar que la deformaci�n para grandes deformaciones (Gradiente de deformaci�n F) no
                         %se inicializa en la identidad ya que este es pisado siempre en la funci�n f_RMap_ME.
                         %{arrayfun(@(x)zeros(e_VGMicro.ntens,x.e_DatElem.npg,x.nElem),e_DatSetMicro,'UniformOutput',false)});

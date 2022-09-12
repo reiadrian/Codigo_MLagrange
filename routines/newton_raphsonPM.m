@@ -26,8 +26,12 @@ iter = 0;
 %eps, eps_fluct, etc.) por set. Esto evitaria tener matrices que no se necesita en ciertos sets. Otra es tener
 %variables que indiquen las dimensiones que se necesita de estas matrices, y en el caso que no se necesite que
 %sea cero.
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 e_VarEst_new = f_eVarEstInic({'sigmaE','sigmaT','eps','velflu','phi','mflu','mYcord','porpr','eps_fluct','phi_fluct',...
     'p_fluct','p_M','hvar','bodyForce'},e_DatSet,e_VG,0);
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 du_iter = zeros(ndoft,1);
 
 % ESQUEMA ITERATIVO DE NEWTON
@@ -44,9 +48,12 @@ e_VG.iter = iter;
 %u(1) = u(0)+Du (u(i+1)=u(i)+Du), Du elastico (cualquiera sea el estado actual del problema,
 %que no corresponde al comportamiento de los modelos constitutivos elegidos) y que el residuo va
 %corresponder a ese comportamiento elastico asumido (es decir va ser incorrecto).
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 [KT,Fint,c_GdlCond,e_VarEst_new,e_VarAux] = f_Par_MatGlobalesPM(xx,u,Du_step_new,c_GdlCond,e_DatSet,...
     e_VarEst_new,e_VarEst_old,e_VarAux,DefMacro,GradPorMacro,PorMacro,e_VG); %AA
-
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 % CALCULO DEL RESIDUO (se considera los residuos de los gdl sin condensar)
 res = residuo(Fext,Fint,m_LinCond,dofl,doff,lambda);
 
@@ -114,19 +121,34 @@ while (norm_res>tol_rel||norm_desp>tol_rel||norm_por>tol_rel)&&iter<max_iter||it
    
    % NORMA DEL RESIDUO (se considera los residuos de los gdl sin condensar)
    norm_res = norm(res)+f_cVar_normRes(e_DatSet,e_VG,c_GdlCond);
-   % NORMA DEL DESPLAZAMIENTO (se considera los residuos de los gdl sin condensar)
-   v_desp = (1:ndoft)';
-   v_desp(3:3:end) = 0;
-   du_despl = du_iter(v_desp.*dofl > 0);
-   norm_desp = norm(du_despl);
-   % NORMA DE LAS POROPRESIONES (se considera los residuos de los gdl sin condensar)
-   v_por = (1:ndoft)';
-   v_por(1:3:end) = 0;
-   v_por(2:3:end) = 0;
-   du_por = du_iter(v_por.*dofl > 0);
-   du_por = du_por(du_por ~= 0);
-   norm_por = norm(du_por);
-   
+   %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   if e_VG.protype==1
+       % NORMA DEL DESPLAZAMIENTO (se considera los residuos de los gdl sin condensar)
+       v_desp = (1:ndoft)';
+       v_desp(3:3:end) = 0;
+       du_despl = du_iter(v_desp.*dofl > 0);
+       norm_desp = norm(du_despl);
+       % NORMA DE LAS POROPRESIONES (se considera los residuos de los gdl sin condensar)
+       v_por = (1:ndoft)';
+       v_por(1:3:end) = 0;
+       v_por(2:3:end) = 0;
+       du_por = du_iter(v_por.*dofl > 0);
+       du_por = du_por(du_por ~= 0);
+       norm_por = norm(du_por);
+   elseif e_VG.protype==3
+       m_gdl = e_VG.m_gdl;
+       % NORMA DEL DESPLAZAMIENTO (se considera los residuos de los gdl sin condensar)
+       v_desp = [m_gdl(:,2);m_gdl(:,3)];
+       du_despl = du_iter(v_desp);
+       norm_desp = norm(du_despl);
+       % NORMA DE LAS POROPRESIONES (se considera los residuos de los gdl sin condensar)
+       v_por = m_gdl(:,4);
+       du_por = du_iter(v_por(v_por~=0));
+       norm_por = norm(du_por);       
+   end
+   %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    % IMPRESION POR PANTALLA DEL PROCESO DE CONVERGENCIA
    if ~e_VG.esME
        disp('=================================================================');

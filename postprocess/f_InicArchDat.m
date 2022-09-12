@@ -153,13 +153,13 @@ function f_InicArchDat(in,m_SetElem,e_DatSet,e_VG)
                   f_VerifInfoGraf(elem,'elemento',c_TextTipoEjeGraf{iEje},iGraf);
                   set = m_SetElem(elem);
                   elem = e_DatSet(set).m_NumElem(e_DatSet(set).m_IndElemSet==elem);
-                  c_TextoEjes{iEje} = ['Componente_X_de_la_tracción_del_elemento ',int2str(elem)];
+                  c_TextoEjes{iEje} = ['Componente_X_de_la_tracciï¿½n_del_elemento ',int2str(elem)];
                case 'Ty'
                   elem = m_DatGrafXY(iGraf,iEje+2);
                   f_VerifInfoGraf(elem,'elemento',c_TextTipoEjeGraf{iEje},iGraf);
                   set = m_SetElem(elem);
                   elem = e_DatSet(set).m_NumElem(e_DatSet(set).m_IndElemSet==elem);
-                  c_TextoEjes{iEje} = ['Componente_Y_de_la_tracción_del_elemento ',int2str(elem)];
+                  c_TextoEjes{iEje} = ['Componente_Y_de_la_tracciï¿½n_del_elemento ',int2str(elem)];
                case 'Exx'
                   elem = m_DatGrafXY(iGraf,iEje+2);
                   f_VerifInfoGraf(elem,'elemento',c_TextTipoEjeGraf{iEje},iGraf);                  
@@ -277,7 +277,7 @@ function f_InicArchDat(in,m_SetElem,e_DatSet,e_VG)
                   elem = e_DatSet(set).m_NumElem(e_DatSet(set).m_IndElemSet==elem);
                   c_TextoEjes{iEje} = ['Tension_Txy_del_elemento ',int2str(elem),...
                      ' y_del_punto_de_gauss ',int2str(pg)];
-               case 'Tyx'     %Para el caso de tensores no simétricos (LD por ejemplo)
+               case 'Tyx'     %Para el caso de tensores no simï¿½tricos (LD por ejemplo)
                   elem = m_DatGrafXY(iGraf,iEje+2);
                   f_VerifInfoGraf(elem,'elemento',c_TextTipoEjeGraf{iEje},iGraf);
                   pg = m_DatGrafXY(iGraf,iEje+4);
@@ -378,7 +378,7 @@ function f_InicArchDat(in,m_SetElem,e_DatSet,e_VG)
                   f_VerifInfoGraf(pg,'punto de gauss',c_TextTipoEjeGraf{iEje},iGraf);
                   set = m_SetElem(elem);
                   elem = e_DatSet(set).m_NumElem(e_DatSet(set).m_IndElemSet==elem);
-                  c_TextoEjes{iEje} = ['Variable_de_daño_del_elemento ',int2str(elem),...
+                  c_TextoEjes{iEje} = ['Variable_de_daï¿½o_del_elemento ',int2str(elem),...
                      ' y_del_punto_de_gauss ',int2str(pg)];
                case 'DisGLO'
                   c_TextoEjes{iEje} = ('Disipacion_estructural_del_test');
@@ -407,21 +407,25 @@ function f_InicArchDat(in,m_SetElem,e_DatSet,e_VG)
                 case 'q'
                     c_TextoEjes{iEje} = ('J2');
                otherwise
-                  error('Archivos de datos: Inicialización: No está definido este tipo de dato.')
+                  error('Archivos de datos: Inicializaciï¿½n: No estï¿½ definido este tipo de dato.')
             end
          end
 %          fId = fopen([fileCompleto,'.cur',num2str(iGraf,'%03d')],'wt'); %AA
          fId = fopen([fileCompleto,num2str(iGraf,'%03d'),'.dat'],'wt'); %AA
-         %Se usa el símbolo de comentario estándar del GNUPlot
+         %Se usa el sï¿½mbolo de comentario estï¿½ndar del GNUPlot
 %          fprintf(fId,['###',c_TextoEjes{1},' Vs ',c_TextoEjes{2},'###''\n']); %AA
          if iGraf==1
          fprintf(fId,['Numero_de_graficos: ',num2str(nGraf,'%d'),'\n']); %AA
          end
          if e_VG.protype==0
          fprintf(fId,['Steps ',num2str(e_VG.np,'%d'),'\n']); %AA
-         elseif e_VG.protype==1
+         %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+         %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+         elseif e_VG.protype==1||e_VG.protype==3
          fprintf(fId,['Steps ',num2str(e_VG.np+1,'%d'),'\n']); %AA  
          end
+         %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+         %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
          fprintf(fId,[c_TextoEjes{1},'\n']); %AA
          fprintf(fId,['VS','\n']); %AA
          fprintf(fId,[c_TextoEjes{2},'\n']); %AA
@@ -434,8 +438,8 @@ end
 function f_VerifInfoGraf(ubic,textTipoUbic,textTipoEje,iGraf)
    
    if isnan(ubic)
-      error(['Archivos de datos: Inicialización: Se debe ingresar el número ',...
-         'de %s para los datos del eje %s de la gráfica %d.'],textTipoUbic,textTipoEje,iGraf)
+      error(['Archivos de datos: Inicializaciï¿½n: Se debe ingresar el nï¿½mero ',...
+         'de %s para los datos del eje %s de la grï¿½fica %d.'],textTipoUbic,textTipoEje,iGraf)
    end
    
 end

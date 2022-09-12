@@ -14,7 +14,7 @@ e_VG.MGlobInv = [];
 % Recupera variables globales
 ntens = e_VG.ntens;
 nSet = e_VG.nSet;
-
+protype = e_VG.protype;
 % Inicializaciones
 c_Ke = cell(nSet,1);
 c_Fint = cell(nSet,1);
@@ -54,11 +54,16 @@ for iSet = 1:nSet
     m_DefMacroSet = DefMacro{iSet}; %AA: La def macro es cte en todo el elemento aplicada en cada PG
     m_GradPorMacroSet = GradPorMacro{iSet}; 
     m_PorMacroSet = PorMacro{iSet}; 
-
-    m_BT_d = e_DatSet(iSet).m_BT_d; %Matriz B de desplazamientos-deformaciones
-    m_DetJT_d = e_DatSet(iSet).m_DetJT_d; %Determinante del Jacobiano en desplazamientos
-    m_DerCa_p = e_DatSet(iSet).m_DerCa_p; %Matriz en derivadas cartesianas para poropresiones
-    m_DetJT_p = e_DatSet(iSet).m_DetJT_p; %Determinante del Jacobiano en poropresiones
+    conshyp = e_DatMatSet.conshyp;
+    if conshyp==14
+        m_BT_d = e_DatSet(iSet).m_BT_d; %Matriz B de desplazamientos-deformaciones
+        m_DetJT_d = e_DatSet(iSet).m_DetJT_d; %Determinante del Jacobiano en desplazamientos
+        m_DerCa_p = e_DatSet(iSet).m_DerCa_p; %Matriz en derivadas cartesianas para poropresiones
+        m_DetJT_p = e_DatSet(iSet).m_DetJT_p; %Determinante del Jacobiano en poropresiones
+    elseif conshyp==1
+        m_BT = e_DatSet(iSet).m_BT; %Matriz B de desplazamientos-deformaciones
+        m_DetJT = e_DatSet(iSet).m_DetJT; %Determinante del Jacobiano en desplazamientos
+    end
 
     sigmaE_old = e_VarEst_old(iSet).sigmaE; %Tension efectiva previa
     sigmaT_old = e_VarEst_old(iSet).sigmaT; %Tension total previa
@@ -142,30 +147,50 @@ for iSet = 1:nSet
     %si solo del field, por lo tanto no tendria que ser mucho mas lenta.
     %Otra seria pasar la variable iElem como argumento en las funciones que llama dentro del
     %parfor.
+    switch conshyp
+        case {1}
+            m_VolElem = e_DatSet(iSet).m_VolElem;
+            %                  parfor iElem = 1:nElem
+            for iElem = 1:nElem
+                e_VG_Aux4 = e_VG;
+                e_VG_Aux4.iElemSet = iElem;
+                e_VG_Aux4.iElemNum = m_NumElem(iElem);
+                %
+                [m_Ke(:,:,iElem),m_Fint(:,iElem),sigmaT_new(:,iElem),eps_new(:,iElem),...
+                eps_fluct(:,iElem),hvar_new(:,iElem),aux_var(:,iElem),...
+                m_TensorTang(:,:,:,iElem)] =...
+                f_MatElem_quad_q1(...
+                uElemSet(:,iElem),eps_old(:,iElem), hvar_old(:,iElem),aux_var(:,iElem),...
+                e_DatElemSet,e_DatMatSet,m_BT(:,:,:,iElem),m_DetJT(:,iElem),...
+                m_DefMacroSet(:,iElem),sigmaT_old(:,iElem),...    %m_DefMacroSet(:,:,iElem)
+                m_VolElem(iElem),e_VG_Aux4);
+            end
+        case {14}
+            % Fuerza interna y tensor tangente del elemento
+            %AA: Cuadrangulo estandar de 8 nodos (Aplicado p/medio bifase)
+            m_FF_p = e_DatSet(iSet).m_FF_p;
+            conec = e_DatSet(iSet).conec;
+            %                  parfor iElem = 1:nElem
+            for iElem = 1:nElem
+                e_VG_Aux16 = e_VG;
+                e_VG_Aux16.iElemSet = iElem;
+                e_VG_Aux16.iElemNum = m_NumElem(iElem);
+                coord_n = f_CoordElem(xx,conec(iElem,:));
+                [m_Ke(:,:,iElem),m_Fint(:,iElem),sigmaE_new(:,iElem),sigmaT_new(:,iElem),...
+                eps_new(:,iElem),velflu_new(:,iElem),mflu_new(:,iElem),mfluY_new(:,iElem),eps_fluct(:,iElem),...
+                phi_new(:,iElem),phi_fluct(:,iElem),porpr_new(:,iElem),p_fluct(:,iElem),p_M(:,iElem),...
+                hvar_new(:,iElem),aux_var(:,iElem),m_Csig_eps(:,:,:,iElem),m_bw_eps(:,:,:,iElem),m_Cw_eps3(:,:,:,iElem),...
+                m_bsig_p(:,:,:,iElem),m_Mww_p(:,:,:,iElem),m_bw_p3(:,:,:,iElem), m_ksig_phi(:,:,:,iElem),...
+                m_kww_phi(:,:,:,iElem),m_kw_phi3(:,:,:,iElem),m_Cw_eps(:,:,:,iElem),...
+                m_bw_p(:,:,:,iElem),m_kw_phi(:,:,:,iElem),m_TensorTang(:,:,:,iElem)] = f_MatElem_BifaseMulTSc(...
+                uElemSet(:,iElem),eps_old(:,iElem),coord_n,hvar_old(:,iElem),aux_var(:,iElem),...
+                e_DatElemSet,e_DatMatSet,m_BT_d(:,:,:,iElem),m_DetJT_d(:,iElem),...
+                m_DerCa_p(:,:,:,iElem),m_DetJT_p(:,iElem),m_FF_p,m_DefMacroSet(:,iElem),...  %m_DefMacroSet(:,:,iElem)
+                m_GradPorMacroSet(:,iElem),m_PorMacroSet(:,iElem),...
+                sigmaE_old(:,iElem),sigmaT_old(:,iElem),e_VG_Aux16);
+            end %for(iElem)
+    end
 
-    % Fuerza interna y tensor tangente del elemento
-    %AA: Cuadrangulo estandar de 8 nodos (Aplicado p/medio bifase)
-    m_FF_p = e_DatSet(iSet).m_FF_p;
-    conec = e_DatSet(iSet).conec;
-    %                  parfor iElem = 1:nElem
-    for iElem = 1:nElem
-        e_VG_Aux16 = e_VG;
-        e_VG_Aux16.iElemSet = iElem;
-        e_VG_Aux16.iElemNum = m_NumElem(iElem);
-        coord_n = f_CoordElem(xx,conec(iElem,:));
-        [m_Ke(:,:,iElem),m_Fint(:,iElem),sigmaE_new(:,iElem),sigmaT_new(:,iElem),...
-        eps_new(:,iElem),velflu_new(:,iElem),mflu_new(:,iElem),mfluY_new(:,iElem),eps_fluct(:,iElem),...
-        phi_new(:,iElem),phi_fluct(:,iElem),porpr_new(:,iElem),p_fluct(:,iElem),p_M(:,iElem),...
-        hvar_new(:,iElem),aux_var(:,iElem),m_Csig_eps(:,:,:,iElem),m_bw_eps(:,:,:,iElem),m_Cw_eps3(:,:,:,iElem),...
-        m_bsig_p(:,:,:,iElem),m_Mww_p(:,:,:,iElem),m_bw_p3(:,:,:,iElem), m_ksig_phi(:,:,:,iElem),...
-        m_kww_phi(:,:,:,iElem),m_kw_phi3(:,:,:,iElem),m_Cw_eps(:,:,:,iElem),...
-        m_bw_p(:,:,:,iElem),m_kw_phi(:,:,:,iElem),m_TensorTang(:,:,:,iElem)] = f_MatElem_BifaseMulTSc(...
-        uElemSet(:,iElem),eps_old(:,iElem),coord_n,hvar_old(:,iElem),aux_var(:,iElem),...
-        e_DatElemSet,e_DatMatSet,m_BT_d(:,:,:,iElem),m_DetJT_d(:,iElem),...
-        m_DerCa_p(:,:,:,iElem),m_DetJT_p(:,iElem),m_FF_p,m_DefMacroSet(:,iElem),...  %m_DefMacroSet(:,:,iElem)
-        m_GradPorMacroSet(:,iElem),m_PorMacroSet(:,iElem),...
-        sigmaE_old(:,iElem),sigmaT_old(:,iElem),e_VG_Aux16);
-    end %for(iElem) 
     e_VarEst_new(iSet).sigmaE = sigmaE_new;
     e_VarEst_new(iSet).sigmaT = sigmaT_new;
     e_VarEst_new(iSet).eps = eps_new;

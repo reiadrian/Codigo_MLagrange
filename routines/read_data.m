@@ -1833,7 +1833,7 @@ elseif protype == 3 %AA
         e_VG = rmfield(e_VG,fields); %AA: remueve los campos de e_VG
         e_VG.theta = theta;
 %         e_VG.gdl_carga = gdl_carga; %AA
-        e_VG.ndn_d = ndn-1; %AA: ver como mejorar estoooo!!!!!!!
+        e_VG.ndn_d = ndn_sm; %AA: ver como mejorar estoooo!!!!!!!
         e_VG.ndn_p = 1;
         e_VG.in_esq=in_esq; %Nodos de esquina
         e_VG.in_int=in_int; %Nodos internos

@@ -5,7 +5,7 @@ START:  NEW_RUN
 $-----------------------------------------------------------------------CONTROL_DATA
 CONTROL_DATA
   GEOMETRY = 1
-  PROBLEM_TYPE = 1
+  PROBLEM_TYPE = 3
 DIMENSIONS: NELEM=100  NPOIN=341  NELFR=0 NDPEL=8  NGAUS=2 NSETS=2 NSTAGE=1
 END_CONTROL_DATA
 $----------------------------------------------------------------------- GENERAL_DATA
@@ -460,12 +460,12 @@ $---------------------------------------------------------------------SET
 SET=1
 ELEMENT_DATA:  TYPE=16 MODEL=14 THICKNESS=1.0 NGAUS=2
 MATERIAL_DATA:
-YOUNG=         1000.00 POISS=0.20 E0=0.600 KS=  1000000.00 KW=  1000000.00 KX=0.0000e+00 KY=8.6400e-05 DENSS=   1.00 DENSW=    1.00 ELASLIMIT=   1.00
+YOUNG=         1000.00 POISS=0.20 E0=0.600 KS=  1000000.00 KW=  1000000.00 KX=8.6400e-05 KY=8.6400e-05 DENSS=   1.00 DENSW=    1.00 ELASLIMIT=   1.00
 END_SET
 SET=2
-ELEMENT_DATA:  TYPE=16 MODEL=14 THICKNESS=1.0 NGAUS=2
+ELEMENT_DATA:  TYPE=16 MODEL=1 THICKNESS=1.0 NGAUS=2
 MATERIAL_DATA:
-YOUNG= 210000000000.00 POISS=0.20 E0=0.0 KS=  100000000.00 KW=  100000000.00 KX=1.0000e-18 KY=1.0000e-18 DENSS=   1.00 DENSW=    1.00 ELASLIMIT=   1.00
+YOUNG= 210000000000.00 POISS=0.20 
 END_SET
 END_SETS
 END_GENERAL_DATA
@@ -527,27 +527,27 @@ END_FUNCTION
 $--------------------------------------------------------------------------LOAD
 LOAD: NEW_LOAD
 POINT_LOAD
-NODE=     1 FX=  0.0000 FY=     -1.000 p=      0.000
-NODE=     2 FX=  0.0000 FY=     -4.000 p=      0.000
-NODE=     4 FX=  0.0000 FY=     -2.000 p=      0.000
-NODE=     9 FX=  0.0000 FY=     -4.000 p=      0.000
-NODE=    14 FX=  0.0000 FY=     -2.000 p=      0.000
-NODE=    21 FX=  0.0000 FY=     -4.000 p=      0.000
-NODE=    26 FX=  0.0000 FY=     -2.000 p=      0.000
-NODE=    37 FX=  0.0000 FY=     -4.000 p=      0.000
-NODE=    45 FX=  0.0000 FY=     -2.000 p=      0.000
-NODE=    58 FX=  0.0000 FY=     -4.000 p=      0.000
-NODE=    68 FX=  0.0000 FY=     -2.000 p=      0.000
-NODE=    83 FX=  0.0000 FY=     -4.000 p=      0.000
-NODE=    94 FX=  0.0000 FY=     -2.000 p=      0.000
-NODE=   114 FX=  0.0000 FY=     -4.000 p=      0.000
-NODE=   128 FX=  0.0000 FY=     -2.000 p=      0.000
-NODE=   149 FX=  0.0000 FY=     -4.000 p=      0.000
-NODE=   164 FX=  0.0000 FY=     -2.000 p=      0.000
-NODE=   188 FX=  0.0000 FY=     -4.000 p=      0.000
-NODE=   206 FX=  0.0000 FY=     -2.000 p=      0.000
-NODE=   232 FX=  0.0000 FY=     -4.000 p=      0.000
-NODE=   253 FX=  0.0000 FY=     -1.000 p=      0.000
+NODE=     1 FX=  0.0000 FY=     -1.000 Q=      0.000
+NODE=     2 FX=  0.0000 FY=     -4.000 Q=      0.000
+NODE=     4 FX=  0.0000 FY=     -2.000 Q=      0.000
+NODE=     9 FX=  0.0000 FY=     -4.000 Q=      0.000
+NODE=    14 FX=  0.0000 FY=     -2.000 Q=      0.000
+NODE=    21 FX=  0.0000 FY=     -4.000 Q=      0.000
+NODE=    26 FX=  0.0000 FY=     -2.000 Q=      0.000
+NODE=    37 FX=  0.0000 FY=     -4.000 Q=      0.000
+NODE=    45 FX=  0.0000 FY=     -2.000 Q=      0.000
+NODE=    58 FX=  0.0000 FY=     -4.000 Q=      0.000
+NODE=    68 FX=  0.0000 FY=     -2.000 Q=      0.000
+NODE=    83 FX=  0.0000 FY=     -4.000 Q=      0.000
+NODE=    94 FX=  0.0000 FY=     -2.000 Q=      0.000
+NODE=   114 FX=  0.0000 FY=     -4.000 Q=      0.000
+NODE=   128 FX=  0.0000 FY=     -2.000 Q=      0.000
+NODE=   149 FX=  0.0000 FY=     -4.000 Q=      0.000
+NODE=   164 FX=  0.0000 FY=     -2.000 Q=      0.000
+NODE=   188 FX=  0.0000 FY=     -4.000 Q=      0.000
+NODE=   206 FX=  0.0000 FY=     -2.000 Q=      0.000
+NODE=   232 FX=  0.0000 FY=     -4.000 Q=      0.000
+NODE=   253 FX=  0.0000 FY=     -1.000 Q=      0.000
 END_POINT_LOAD
 END_LOAD
 $----------------------------------------------------------------------BOUNDARY
@@ -630,11 +630,7 @@ CONVERGENCE: TOL_NEWTON=1 ITERMAX=50 TOL_CONST_MODEL=1E-8 THETA=0.5/
             ETA_MIN=1 ETA_MAX=1 ETA_PAR=1 TOLER=1 STRATEGY=1 DS=0.0045
 POST_PROCESS: STEP=1
 $-------------------------------------------------------------POSTPROCESSING
-      PLOT: NGRAF=4       
-        Nx=89  Ny=89   X=logT Y=Porepress  
-        Nx=110  Ny=110   X=logT Y=Porepress 
-        Nx=111  Ny=111   X=logT Y=Porepress  
-        Nx=133  Ny=133   X=logT Y=Porepress 
+      PLOT: NGRAF=0
 $----------------------------------------------------------------------PRINT
    PRINT:
        IRES=1
